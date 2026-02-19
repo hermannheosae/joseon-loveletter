@@ -11,8 +11,17 @@
       input { padding: 15px; font-size: 20px; border-radius: 5px; border: 2px solid #8c7b6c; background-color: #4a4036; color: white; text-align: center; margin-bottom: 20px; width: 80%; max-width: 300px; }
       .btn-custom { padding: 15px 30px; font-size: 22px; background-color: #a63737; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
       
-      /* 게임 화면 레이아웃 */
-      #game-screen { display: none; max-width: 600px; margin: 0 auto; padding: 10px; height: 100vh; box-sizing: border-box; position: relative; display: flex; flex-direction: column; }
+      /* 게임 화면 레이아웃 - 처음엔 아예 안 보이게 설정 */
+      #game-screen { 
+        display: none !important; /* !important를 붙여서 확실히 숨깁니다 */
+        max-width: 600px; 
+        margin: 0 auto; 
+        padding: 10px; 
+        height: 100vh; 
+        box-sizing: border-box; 
+        position: relative; 
+        flex-direction: column; 
+      }
       
       /* 상단 바 */
       #top-bar { display: flex; flex-direction: column; background: rgba(0,0,0,0.4); border-radius: 10px; margin-bottom: 5px; padding: 10px; border: 1px solid #5c5042;}
@@ -71,7 +80,6 @@
       .mini-card:active { transform: scale(0.92); } 
       .mini-card.out { background-color: #2b2520; color: #555; border-color: #222; }
       .mini-count { font-size: 10px; color: #aaa; margin-top: 1px; }
-      .mini-card.out .mini-count { color: #444; }
 
       /* 팝업 공통 스타일 */
       .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
@@ -97,7 +105,7 @@
       <button class="btn-custom" onclick="joinGame()" style="margin-top: 20px;">입장하기</button>
     </div>
 
-    <div id="game-screen">
+    <div id="game-screen" style="display: none;">
       <div id="top-bar">
         <div id="top-row">
           <span id="room-info-display">방: <span id="room-display"></span> (<span id="player-count">0</span>/4)</span>
@@ -167,20 +175,24 @@
         "4": "다음 내 차례 전까지\n다른 플레이어의 공격을 받지 않습니다.",
         "5": "자신 또는 상대 1명을 지목해\n가진 카드를 버리고 새로 뽑습니다.",
         "6": "상대 1명과\n카드를 서로 맞바꿉니다.",
-        "7": "5번(자객) 또는 6번(임금) 카드가 함께 있다면 반드시 이 카드를 먼저 버려야 합니다. (그 외에는 선택적으로 버릴 수 있습니다)",
+        "7": "5번(자객) 또는 6번(임금) 카드가 함께 있다면 반드시 이 카드를 먼저 버려야 합니다.",
         "8": "이 카드는 절대 버릴 수 없습니다.\n버려지면 즉시 패배합니다."
       };
 
+      // [핵심 수정] 입장하기 버튼 클릭 시 작동
       function joinGame() {
         var name = document.getElementById('nickname').value;
-        var room = "1"; 
         if(!name) return alert("이름을 입력해주십시오!");
         
         myName = name; 
-        socket.emit('login', { name: name, roomName: room });
+        socket.emit('login', { name: name, roomName: "1" });
         
+        // 1. 로그인 화면 숨기기
         document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('game-screen').style.display = 'flex';
+        
+        // 2. 게임 화면 보이기 (!important 때문에 setProperty 사용)
+        var gameScreen = document.getElementById('game-screen');
+        gameScreen.style.setProperty('display', 'flex', 'important');
       }
 
       function requestStart() { socket.emit('requestStart'); }
@@ -197,12 +209,8 @@
         else startBtn.style.display = 'none';
 
         if (!data.isStarted) {
-             // [수정 2] 대기 중 안내 문구 변경
-             document.getElementById('turn-info').innerText = "플레이어들이 모두 입장하면 게임시작 버튼을 눌러주세요";
+             document.getElementById('turn-info').innerText = "모두 입장하면 시작 버튼을 눌러주세요";
              document.getElementById('turn-info').style.color = "#aaa";
-             document.getElementById('turn-info').style.fontSize = "16px"; // 문구가 길어서 폰트 사이즈 살짝 조정
-        } else {
-             document.getElementById('turn-info').style.fontSize = "20px"; // 게임 시작 시 원래 크기로 복구
         }
       });
 
@@ -216,7 +224,6 @@
         isMyTurn = (data.turnId === socket.id);
         var info = document.getElementById('turn-info');
         var cards = document.querySelectorAll('.card');
-
         if (isMyTurn) {
           info.innerText = "🔥 당신의 차례입니다! 🔥";
           info.style.color = "#e6b322";
@@ -240,7 +247,6 @@
         stats.forEach(item => {
           var isOut = (item.remaining === 0);
           var cls = isOut ? "mini-card out" : "mini-card";
-          
           html += `
             <div class="${cls}" onclick="showCardInfo('${item.num}', '${item.name}')">
               <div style="font-size:10px; color:#aaa;">(${item.num})</div>
@@ -254,11 +260,9 @@
 
       function showCardInfo(num, name) {
         var desc = cardDescriptions[num] || "";
-        var formattedDesc = desc.replace(/\n/g, '<br>'); 
-        
         document.getElementById('notice-text').innerHTML = `
           <div style="font-size: 22px; color: #e6b322; font-weight: bold; margin-bottom: 15px; font-family: 'Gungsuh', serif;">${name} (${num})</div>
-          <div style="font-size: 15px; color: #f0e6d2; line-height: 1.5; word-break: keep-all;">${formattedDesc}</div>
+          <div style="font-size: 15px; color: #f0e6d2; line-height: 1.5; word-break: keep-all;">${desc.replace(/\n/g, '<br>')}</div>
         `;
         document.getElementById('notice-overlay').style.display = 'flex';
       }
@@ -277,11 +281,10 @@
       });
 
       function clickCard(index) {
-        if (!isMyTurn) return alert("아직 당신의 차례가 아닙니다.");
+        if (!isMyTurn) return alert("당신의 차례가 아닙니다.");
         if (!myHand[index]) return;
         selectedCardIdx = index;
         var cardName = myHand[index];
-
         if (cardName.includes("의녀") || cardName.includes("후궁") || cardName.includes("왕비")) {
           selectedTarget = ""; submitMove(null);
         } else {
@@ -292,11 +295,8 @@
       function openTargetOverlay() {
         var html = "";
         var cardName = myHand[selectedCardIdx]; 
-
         currentPlayers.forEach(p => {
-          if ((cardName.includes("포졸") || cardName.includes("광대") || cardName.includes("검객") || cardName.includes("임금")) && p === myName) {
-             return; 
-          }
+          if ((cardName.includes("포졸") || cardName.includes("광대") || cardName.includes("검객") || cardName.includes("임금")) && p === myName) return; 
           html += `<button class="overlay-btn" onclick="selectTarget('${p}')">${p}</button>`;
         });
         document.getElementById('target-buttons').innerHTML = html;
@@ -307,7 +307,6 @@
         var cardName = myHand[selectedCardIdx];
         selectedTarget = name;
         document.getElementById('target-overlay').style.display = 'none';
-        
         if (cardName.includes("포졸")) document.getElementById('guess-overlay').style.display = 'flex';
         else submitMove(null);
       }
