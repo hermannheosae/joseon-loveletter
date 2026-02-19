@@ -74,7 +74,6 @@ io.on('connection', (socket) => {
     const targetName = data.target;
     const guess = data.guess;
 
-    // 후궁 제약 조건
     if (cardName.includes("자객") || cardName.includes("임금")) {
       if (attacker.hand.some(c => c.includes("후궁"))) {
         socket.emit('privateNotice', '✋ 후궁(7)이 손에 있을 때는 이 카드를 낼 수 없습니다! 후궁을 먼저 버리십시오.');
