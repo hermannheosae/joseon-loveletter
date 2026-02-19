@@ -11,9 +11,9 @@
       input { padding: 15px; font-size: 20px; border-radius: 5px; border: 2px solid #8c7b6c; background-color: #4a4036; color: white; text-align: center; margin-bottom: 20px; width: 80%; max-width: 300px; }
       .btn-custom { padding: 15px 30px; font-size: 22px; background-color: #a63737; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
       
-      /* 게임 화면 레이아웃 - 처음엔 아예 안 보이게 설정 */
+      /* 게임 화면 레이아웃 */
       #game-screen { 
-        display: none !important; /* !important를 붙여서 확실히 숨깁니다 */
+        display: none !important; 
         max-width: 600px; 
         margin: 0 auto; 
         padding: 10px; 
@@ -23,7 +23,6 @@
         flex-direction: column; 
       }
       
-      /* 상단 바 */
       #top-bar { display: flex; flex-direction: column; background: rgba(0,0,0,0.4); border-radius: 10px; margin-bottom: 5px; padding: 10px; border: 1px solid #5c5042;}
       #top-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
       #room-info-display { font-size: 16px; font-weight: bold; color: #d4c5a9; }
@@ -31,7 +30,6 @@
       #start-btn { display: none; padding: 8px 15px; background-color: #3e6b46; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 14px; animation: pulse 2s infinite;}
       @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-      /* 게임 로그 */
       #game-log { 
         background-color: rgba(0,0,0,0.3); 
         height: 15vh; 
@@ -40,10 +38,8 @@
       }
       .log-item { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px; }
 
-      /* 턴 정보 */
       #turn-info { font-size: 20px; color: #e6b322; font-weight: bold; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
       
-      /* 내 카드 영역 */
       #hand-container { 
         display: flex; justify-content: center; gap: 10px; 
         margin-bottom: 10px; flex: 1; align-items: center; 
@@ -62,7 +58,6 @@
       .card:active { transform: scale(0.95); }
       .card.disabled { opacity: 0.6; filter: grayscale(80%); cursor: not-allowed; }
 
-      /* 미니카드 영역 */
       #mini-card-area { 
         background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px 8px; margin-top: auto; border: 1px solid #5c5042;
       }
@@ -81,14 +76,12 @@
       .mini-card.out { background-color: #2b2520; color: #555; border-color: #222; }
       .mini-count { font-size: 10px; color: #aaa; margin-top: 1px; }
 
-      /* 팝업 공통 스타일 */
       .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
       .overlay h2 { margin-bottom: 15px; color: #f0e6d2; text-align: center; font-size: 24px;}
       .overlay-content { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 90%; }
       .overlay-btn { padding: 15px 20px; font-size: 18px; background-color: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; cursor: pointer; margin-bottom: 5px; }
       .card-select-btn { background-color: #e6b322; color: #2e2b26; font-weight: bold; border: none; width: 45%; } 
       
-      /* 알림창 전용 스타일 */
       #notice-box {
         background-color: #2e2b26; border: 2px solid #e6b322; 
         padding: 20px; border-radius: 10px; width: 80%; max-width: 300px;
@@ -162,7 +155,7 @@
     <script>
       var socket = io();
       var myHand = [];
-      var currentPlayers = [];
+      var currentPlayers = []; // { id, name, isEliminated } 객체 배열로 변경하여 관리
       var isMyTurn = false;
       var selectedCardIdx = -1;
       var selectedTarget = "";
@@ -179,30 +172,32 @@
         "8": "이 카드는 절대 버릴 수 없습니다.\n버려지면 즉시 패배합니다."
       };
 
-      // [핵심 수정] 입장하기 버튼 클릭 시 작동
       function joinGame() {
         var name = document.getElementById('nickname').value;
         if(!name) return alert("이름을 입력해주십시오!");
-        
         myName = name; 
         socket.emit('login', { name: name, roomName: "1" });
-        
-        // 1. 로그인 화면 숨기기
         document.getElementById('login-screen').style.display = 'none';
-        
-        // 2. 게임 화면 보이기 (!important 때문에 setProperty 사용)
         var gameScreen = document.getElementById('game-screen');
         gameScreen.style.setProperty('display', 'flex', 'important');
       }
 
       function requestStart() { socket.emit('requestStart'); }
 
+      // 서버로부터 상세 플레이어 상태 정보를 받음 (id, name, isEliminated 포함)
       socket.on('roomInfo', (data) => {
         document.getElementById('room-display').innerText = data.roomName || "1";
         document.getElementById('player-count').innerText = data.count;
-        var names = Array.isArray(data.names) ? data.names.join(', ') : "로딩중...";
-        document.getElementById('player-names-box').innerText = "명단: " + names;
-        currentPlayers = data.names;
+        
+        // 데이터 구조가 단순 이름 배열인 경우와 상세 정보인 경우 모두 대응
+        if (data.playerStates) {
+          currentPlayers = data.playerStates; 
+        } else {
+          currentPlayers = data.names.map(name => ({ name: name, isEliminated: false }));
+        }
+
+        var nameList = currentPlayers.map(p => p.isEliminated ? `[탈락]${p.name}` : p.name).join(', ');
+        document.getElementById('player-names-box').innerText = "명단: " + nameList;
 
         var startBtn = document.getElementById('start-btn');
         if (data.count >= 2 && !data.isStarted) startBtn.style.display = 'block';
@@ -292,13 +287,26 @@
         }
       }
 
+      // [핵심 수정 부분] 탈락자를 타겟 목록에서 제외
       function openTargetOverlay() {
         var html = "";
         var cardName = myHand[selectedCardIdx]; 
+        
         currentPlayers.forEach(p => {
-          if ((cardName.includes("포졸") || cardName.includes("광대") || cardName.includes("검객") || cardName.includes("임금")) && p === myName) return; 
-          html += `<button class="overlay-btn" onclick="selectTarget('${p}')">${p}</button>`;
+          // 1. 자기 자신 제외 (포졸, 광대, 검객, 임금일 때)
+          if ((cardName.includes("포졸") || cardName.includes("광대") || cardName.includes("검객") || cardName.includes("임금")) && p.name === myName) return; 
+          
+          // 2. [수정] 이미 탈락(제거)된 플레이어는 목록에서 아예 제외
+          if (p.isEliminated) return;
+
+          html += `<button class="overlay-btn" onclick="selectTarget('${p.name}')">${p.name}</button>`;
         });
+
+        if (html === "") {
+          alert("지목할 수 있는 상대가 없습니다.");
+          return;
+        }
+
         document.getElementById('target-buttons').innerHTML = html;
         document.getElementById('target-overlay').style.display = 'flex';
       }
