@@ -119,12 +119,12 @@
 
     <div id="target-overlay" class="overlay">
       <h2>누구를 지목하시겠습니까?</h2>
-      <div id="target-buttons" class="overlay-content"></div>
-      <button class="btn-custom" style="margin-top:20px; background-color:#333;" onclick="closeOverlay()">취소</button>
+      <div id="target-buttons" style="display:flex; flex-direction:column; align-items:center; width:100%;"></div>
+      <button class="btn-custom" style="margin-top:20px; background-color:#333; font-size:16px;" onclick="closeOverlay()">취소</button>
     </div>
 
     <div id="guess-overlay" class="overlay">
-      <h2>상대가 무슨 카드일까요?</h2>
+      <h2>상대의 카드는?</h2>
       <div class="overlay-content">
         <button class="overlay-btn" style="background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('🎭광대(2)')">🎭광대(2)</button>
         <button class="overlay-btn" style="background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('⚔️검객(3)')">⚔️검객(3)</button>
@@ -134,7 +134,7 @@
         <button class="overlay-btn" style="background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('🌺후궁(7)')">🌺후궁(7)</button>
         <button class="overlay-btn" style="background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('👸왕비(8)')">👸왕비(8)</button>
       </div>
-      <button class="btn-custom" style="margin-top:20px; background-color:#333;" onclick="closeOverlay()">취소</button>
+      <button class="btn-custom" style="margin-top:20px; background-color:#333; font-size:16px;" onclick="closeOverlay()">취소</button>
     </div>
 
     <div id="notice-overlay" class="overlay">
@@ -196,6 +196,7 @@
 
       socket.on('updateHand', (cards) => {
         myHand = cards;
+        const cardNames = { "1":"포졸", "2":"광대", "3":"검객", "4":"의녀", "5":"자객", "6":"임금", "7":"후궁", "8":"왕비" };
         const render = (id, cardStr) => {
           const el = document.getElementById(id);
           if(!cardStr) { el.innerHTML = ""; return; }
