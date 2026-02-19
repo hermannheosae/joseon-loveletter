@@ -175,19 +175,45 @@ function startGame(roomName) {
 
 function nextTurn(roomName, isFirst = false) {
   const room = rooms[roomName];
-  if(!isFirst) {
-    do { room.turnIndex = (room.turnIndex + 1) % room.playerOrder.length; } 
-    while (room.players[room.playerOrder[room.turnIndex]].isEliminated);
+  if (room.deck.length === 0) { 
+    determineWinnerByScore(roomName); 
+    return; 
   }
+
+  if(!isFirst) {
+    let attempts = 0;
+    do { 
+      room.turnIndex = (room.turnIndex + 1) % room.playerOrder.length; 
+      attempts++;
+    } while (room.players[room.playerOrder[room.turnIndex]].isEliminated && attempts < room.playerOrder.length);
+  }
+  
   const id = room.playerOrder[room.turnIndex];
   const p = room.players[id];
   p.isProtected = false;
   const card = drawCard(room);
+  
   if (card) {
     p.hand.push(card);
     io.to(id).emit('updateHand', p.hand);
     io.to(roomName).emit('turnUpdate', { turnName: p.name, turnId: id });
-  } else { determineWinnerByScore(roomName); }
+  } else { 
+    determineWinnerByScore(roomName); 
+  }
+}
+
+function determineWinnerByScore(roomName) {
+  const room = rooms[roomName];
+  let winnerId = null;
+  let maxScore = -1;
+  room.playerOrder.forEach(id => {
+    const p = room.players[id];
+    if (!p.isEliminated) {
+      const score = getCardValue(p.hand[0]);
+      if (score > maxScore) { maxScore = score; winnerId = id; }
+    }
+  });
+  if (winnerId) endGame(roomName, winnerId);
 }
 
 function eliminatePlayer(roomName, id) {
@@ -211,7 +237,10 @@ function endGame(roomName, id) {
 }
 
 function drawCard(room) { return room.deck.pop(); }
-function getCardValue(name) { return parseInt(name.replace(/[^0-9]/g, "")); }
+function getCardValue(name) { 
+  if(!name) return 0;
+  return parseInt(name.replace(/[^0-9]/g, "")); 
+}
 
 function sendCardStats(roomName) {
   const room = rooms[roomName];
