@@ -43,14 +43,14 @@
       }
       .card { 
         background-color: #f5f0e1; color: #2e2b26; 
-        width: 150px; height: 230px; 
+        width: 155px; height: 240px; 
         border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
         font-weight: bold; border: 4px solid #d4c5a9; box-shadow: 0 5px 15px rgba(0,0,0,0.6); 
-        cursor: pointer; transition: transform 0.2s; text-align: center; padding: 6px;
+        cursor: pointer; transition: transform 0.2s; text-align: center; padding: 8px;
       }
       
-      .card-name { font-size: 30px; margin-bottom: 8px; line-height: 1.2; font-family: "Gungsuh", serif; }
-      .card-desc { font-size: 15px; color: #554433; font-weight: normal; line-height: 1.4; word-break: keep-all; }
+      .card-name { font-size: 28px; margin-bottom: 10px; line-height: 1.2; font-family: "Gungsuh", serif; }
+      .card-desc { font-size: 14px; color: #554433; font-weight: normal; line-height: 1.4; word-break: keep-all; }
       
       .card:active { transform: scale(0.95); }
       .card.disabled { opacity: 0.6; filter: grayscale(80%); cursor: not-allowed; }
@@ -149,6 +149,17 @@
       var socket = io();
       var myHand = [], currentPlayers = [], isMyTurn = false, selectedCardIdx = -1, myName = "", selectedTarget = "";
       
+      const cardFullInfo = {
+        "1": "지목한 이의 번호를 맞히면 탈락시킵니다 (포졸 제외).",
+        "2": "상대 1명의 카드를 몰래 확인합니다.",
+        "3": "상대 1명과 숫자를 비교하여 낮은 이가 탈락합니다.",
+        "4": "다음 내 차례 전까지 모든 공격을 막아냅니다.",
+        "5": "지목한 이의 카드를 버리게 하고 새로 뽑게 합니다.",
+        "6": "상대 1명과 카드를 서로 맞바꿉니다.",
+        "7": "자객(5)이나 임금(6)이 있다면 반드시 먼저 버려야 합니다.",
+        "8": "이 카드가 버려지면 즉시 패배합니다."
+      };
+
       const cardDescriptions = {
         "1": "상대 1명을 지목해 카드 번호를 추측합니다(포졸 제외). 맞히면 상대는 즉시 탈락!",
         "2": "상대 1명의 카드를 몰래 확인합니다.",
@@ -159,8 +170,6 @@
         "7": "5번 또는 6번 카드가 손에 있다면 반드시 이 카드를 먼저 버려야 합니다.",
         "8": "절대 버릴 수 없습니다. 버려지면 즉시 패배합니다."
       };
-
-      const cardSummary = { "1":"포졸", "2":"패 확인", "3":"숫자 대결", "4":"치료/보호", "5":"패 버리기", "6":"패 교환", "7":"제약 카드", "8":"절대 패배" };
 
       function joinGame() {
         myName = document.getElementById('nickname').value;
@@ -196,12 +205,11 @@
 
       socket.on('updateHand', (cards) => {
         myHand = cards;
-        const cardNames = { "1":"포졸", "2":"광대", "3":"검객", "4":"의녀", "5":"자객", "6":"임금", "7":"후궁", "8":"왕비" };
         const render = (id, cardStr) => {
           const el = document.getElementById(id);
           if(!cardStr) { el.innerHTML = ""; return; }
           const num = cardStr.replace(/[^0-9]/g, "");
-          el.innerHTML = `<div class="card-name">${cardStr}</div><div class="card-desc">${cardSummary[num]}</div>`;
+          el.innerHTML = `<div class="card-name">${cardStr}</div><div class="card-desc">${cardFullInfo[num]}</div>`;
         };
         render('card0', myHand[0]); render('card1', myHand[1]);
       });
