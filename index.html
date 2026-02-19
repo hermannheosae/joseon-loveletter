@@ -5,88 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
       body { text-align: center; font-family: 'Noto Sans KR', sans-serif; background-color: #2e2b26; color: #f0e6d2; margin: 0; padding: 0; }
-      
-      /* 로그인 화면 */
       #login-screen { display: flex; flex-direction: column; justify-content: center; height: 100vh; align-items: center; background-color: #2e2b26; }
       input { padding: 15px; font-size: 20px; border-radius: 5px; border: 2px solid #8c7b6c; background-color: #4a4036; color: white; text-align: center; margin-bottom: 20px; width: 80%; max-width: 300px; }
       .btn-custom { padding: 15px 30px; font-size: 22px; background-color: #a63737; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
-      
-      /* 게임 화면 레이아웃 */
-      #game-screen { 
-        display: none !important; 
-        max-width: 600px; 
-        margin: 0 auto; 
-        padding: 10px; 
-        height: 100vh; 
-        box-sizing: border-box; 
-        position: relative; 
-        flex-direction: column; 
-      }
-      
+      #game-screen { display: none !important; max-width: 600px; margin: 0 auto; padding: 10px; height: 100vh; box-sizing: border-box; position: relative; flex-direction: column; }
       #top-bar { display: flex; flex-direction: column; background: rgba(0,0,0,0.4); border-radius: 10px; margin-bottom: 5px; padding: 10px; border: 1px solid #5c5042;}
       #room-info-display { font-size: 16px; font-weight: bold; color: #d4c5a9; text-align: left; }
       #player-names-box { font-size: 13px; color: #9c8e7e; margin-top: 5px; text-align: left; width: 100%; }
-
-      #game-log { 
-        background-color: rgba(0,0,0,0.3); 
-        height: 15vh; 
-        overflow-y: auto; text-align: left; padding: 10px; border-radius: 10px; 
-        font-size: 14px; color: #e0d0b8; border: 1px solid #5c5042; margin-bottom: 5px; flex-shrink: 0;
-      }
+      #game-log { background-color: rgba(0,0,0,0.3); height: 15vh; overflow-y: auto; text-align: left; padding: 10px; border-radius: 10px; font-size: 14px; color: #e0d0b8; border: 1px solid #5c5042; margin-bottom: 5px; flex-shrink: 0; }
       .log-item { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px; }
-
       #turn-info { font-size: 20px; color: #e6b322; font-weight: bold; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
-      
-      #hand-container { 
-        display: flex; justify-content: center; gap: 10px; 
-        margin-bottom: 10px; flex: 1; align-items: center; 
-      }
-      .card { 
-        background-color: #f5f0e1; color: #2e2b26; 
-        width: 155px; height: 240px; 
-        border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
-        font-weight: bold; border: 4px solid #d4c5a9; box-shadow: 0 5px 15px rgba(0,0,0,0.6); 
-        cursor: pointer; transition: transform 0.2s; text-align: center; padding: 8px;
-      }
-      
+      #hand-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; flex: 1; align-items: center; }
+      .card { background-color: #f5f0e1; color: #2e2b26; width: 155px; height: 240px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; border: 4px solid #d4c5a9; box-shadow: 0 5px 15px rgba(0,0,0,0.6); cursor: pointer; transition: transform 0.2s; text-align: center; padding: 8px; }
       .card-name { font-size: 28px; margin-bottom: 10px; line-height: 1.2; font-family: "Gungsuh", serif; }
       .card-desc { font-size: 14px; color: #554433; font-weight: normal; line-height: 1.4; word-break: keep-all; }
-      
       .card:active { transform: scale(0.95); }
       .card.disabled { opacity: 0.6; filter: grayscale(80%); cursor: not-allowed; }
-
-      #mini-card-area { 
-        background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px 8px; margin-top: auto; border: 1px solid #5c5042;
-      }
-      .mini-card-wrap { 
-        display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; 
-      }
-      .mini-card { 
-        width: 23%; max-width: 80px; height: 60px; 
-        background-color: #5c5042; color: #e0d0b8; border-radius: 5px; 
-        display: flex; flex-direction: column; align-items: center; justify-content: center; 
-        font-size: 11px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); border: 1px solid #3d342b; 
-        cursor: pointer; 
-        transition: transform 0.1s;
-      }
-      .mini-card:active { transform: scale(0.92); } 
+      #mini-card-area { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px 8px; margin-top: auto; border: 1px solid #5c5042; }
+      .mini-card-wrap { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+      .mini-card { width: 23%; max-width: 80px; height: 60px; background-color: #5c5042; color: #e0d0b8; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); border: 1px solid #3d342b; cursor: pointer; transition: transform 0.1s; }
       .mini-card.out { background-color: #2b2520; color: #555; border-color: #222; }
-
       .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
       .overlay h2 { margin-bottom: 15px; color: #f0e6d2; text-align: center; font-size: 24px;}
       .overlay-content { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 90%; }
       .overlay-btn { padding: 15px 20px; font-size: 18px; background-color: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; cursor: pointer; margin-bottom: 5px; }
-      
-      #notice-box {
-        background-color: #2e2b26; border: 2px solid #e6b322; 
-        padding: 20px; border-radius: 10px; width: 80%; max-width: 300px;
-        text-align: center; box-shadow: 0 0 20px rgba(230, 179, 34, 0.3);
-      }
+      #notice-box { background-color: #2e2b26; border: 2px solid #e6b322; padding: 20px; border-radius: 10px; width: 80%; max-width: 300px; text-align: center; box-shadow: 0 0 20px rgba(230, 179, 34, 0.3); }
       #notice-text { font-size: 18px; color: #fff; margin-bottom: 20px; line-height: 1.5; }
     </style>
   </head>
   <body>
-
     <div id="login-screen">
       <h1 style="color: #e6b322; font-size: 45px; margin-bottom: 30px; font-family: 'Gungsuh', serif;">조선시대<br>러브레터</h1>
       <input type="text" id="nickname" placeholder="이름을 입력하시오" />
@@ -101,16 +48,12 @@
         </div>
         <div id="player-names-box">대기중...</div>
       </div>
-
       <div id="game-log"></div>
-      
-      <div id="turn-info">대기 중...</div>
-
+      <div id="turn-info">모든 플레이어가 방에 들어오면 게임시작 버튼을 눌러주세요</div>
       <div id="hand-container">
         <div class="card disabled" id="card0" onclick="clickCard(0)"></div>
         <div class="card disabled" id="card1" onclick="clickCard(1)"></div>
       </div>
-
       <div id="mini-card-area">
         <div style="font-size: 13px; color: #e6b322; margin-bottom: 8px; font-weight: bold;">📋 남은 카드 (클릭 시 능력 확인)</div>
         <div id="mini-card-container" class="mini-card-wrap"></div>
@@ -186,7 +129,7 @@
         document.getElementById('player-count').innerText = data.count;
         document.getElementById('player-names-box').innerText = "명단: " + currentPlayers.map(p => p.isEliminated ? `[탈락]${p.name}` : p.name).join(', ');
         document.getElementById('start-btn').style.display = (data.count >= 2 && !data.isStarted) ? 'block' : 'none';
-        if(!data.isStarted) document.getElementById('turn-info').innerText = "모두 오면 시작을 누르시오";
+        if(!data.isStarted) document.getElementById('turn-info').innerText = "모든 플레이어가 방에 들어오면 게임시작 버튼을 눌러주세요";
       });
 
       socket.on('gameLog', (msg) => {
@@ -240,8 +183,11 @@
         } else {
           let html = "";
           currentPlayers.forEach(p => {
-            if(p.name !== myName && !p.isEliminated) {
-              html += `<button class="overlay-btn" onclick="selectTarget('${p.name}')">${p.name}</button>`;
+            // 5번 카드(자객)일 때는 나 자신도 목록에 포함함
+            if (card.includes("자객") && p.name === myName && !p.isEliminated) {
+                html += `<button class="overlay-btn" style="background:#4a6741;" onclick="selectTarget('${p.name}')">${p.name} (나 자신)</button>`;
+            } else if (p.name !== myName && !p.isEliminated) {
+                html += `<button class="overlay-btn" onclick="selectTarget('${p.name}')">${p.name}</button>`;
             }
           });
           document.getElementById('target-buttons').innerHTML = html || "지목할 생존자가 없습니다.";
