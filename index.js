@@ -35,7 +35,7 @@ io.on('connection', (socket) => {
 
   socket.on('requestStart', () => {
     const room = rooms[socket.roomName];
-    if (!room || room.playerOrder.length < 2 || room.isGameStarted) return;
+    if (!room || room.playerOrder.length < 2) return;
     startGame(socket.roomName);
   });
 
@@ -54,7 +54,7 @@ io.on('connection', (socket) => {
     socket.emit('updateHand', attacker.hand);
 
     if (targetPlayer && targetPlayer.isProtected && targetId !== socket.id) {
-      io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 의녀의 치료 중이라 무효!`);
+      io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 보호 중이라 무효!`);
     } else {
       if (cardName.includes("포졸") && targetPlayer) {
         if (targetPlayer.hand[0].includes(data.guess)) {
@@ -87,7 +87,7 @@ io.on('connection', (socket) => {
         attacker.hand.push(taCard); targetPlayer.hand.push(myCard);
         io.to(socket.id).emit('updateHand', attacker.hand);
         io.to(targetId).emit('updateHand', targetPlayer.hand);
-        io.to(socket.roomName).emit('gameLog', `👑 [${attacker.name}]와 [${targetPlayer.name}]의 패가 바뀌었습니다.`);
+        io.to(socket.roomName).emit('gameLog', `👑 패 교환 완료!`);
       } else if (cardName.includes("왕비")) {
         eliminatePlayer(socket.roomName, socket.id);
       }
@@ -121,10 +121,7 @@ function startGame(roomName) {
     io.to(id).emit('updateHand', room.players[id].hand);
   });
   room.turnIndex = 0;
-  
-  // 시작하자마자 카드 통계 전송
   sendCardStats(roomName); 
-  
   nextTurn(roomName, true);
   broadcastRoomInfo(roomName);
 }
@@ -150,7 +147,6 @@ function determineWinnerByScore(roomName) {
   let survivors = room.playerOrder.filter(id => !room.players[id].isEliminated)
     .map(id => ({ id, name: room.players[id].name, score: parseInt(room.players[id].hand[0].match(/\d+/)[0]) }));
   survivors.sort((a, b) => b.score - a.score);
-  io.to(roomName).emit('gameLog', `🎴 덱 소진! [${survivors[0].name}]님 승리!`);
   endGame(roomName, survivors[0].id);
 }
 
@@ -172,6 +168,7 @@ function eliminatePlayer(roomName, id) {
 function endGame(roomName, id) {
   rooms[roomName].isGameStarted = false;
   io.to(roomName).emit('gameLog', `🏆 최종 승리자: [${rooms[roomName].players[id].name}]`);
+  io.to(roomName).emit('gameOver'); // 게임 종료 이벤트 전송
   broadcastRoomInfo(roomName);
 }
 
