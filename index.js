@@ -125,6 +125,10 @@ function startGame(roomName) {
     io.to(id).emit('updateHand', room.players[id].hand);
   });
   room.turnIndex = 0;
+  
+  // 게임 시작 알림 전송 (UI 초기화를 위해)
+  io.to(roomName).emit('gameStartedNotice'); 
+  
   sendCardStats(roomName); 
   nextTurn(roomName, true);
   broadcastRoomInfo(roomName);
@@ -184,7 +188,6 @@ function drawCard(room) { return room.deck.pop(); }
 function sendCardStats(roomName) {
   const room = rooms[roomName];
   let currentCounts = {};
-  
   room.discardedCards.forEach(card => { 
     let val = card.match(/\d+/)[0]; 
     currentCounts[val] = (currentCounts[val] || 0) + 1; 
@@ -197,13 +200,7 @@ function sendCardStats(roomName) {
   for (let i = 1; i <= 8; i++) {
     let key = i.toString();
     let discarded = currentCounts[key] || 0;
-    stats.push({ 
-      num: key, 
-      name: cardNames[key], 
-      emoji: emojies[key], 
-      discarded: discarded, 
-      total: cardTotalCounts[key] 
-    });
+    stats.push({ num: key, name: cardNames[key], emoji: emojies[key], discarded: discarded, total: cardTotalCounts[key] });
   }
   io.to(roomName).emit('updateCardStats', { stats, deckCount: room.deck.length });
 }
