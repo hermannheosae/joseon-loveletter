@@ -31,7 +31,7 @@
             border: 3px solid #fbc02d; 
             border-radius: 8px; 
             padding: 10px 20px; 
-            font-size: 23.7px; /* 이전 크기에서 10% 축소 */
+            font-size: 23.7px; 
             font-weight: 900; 
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(255, 235, 59, 0.4);
@@ -66,7 +66,7 @@
             <div class="card disabled" id="card1" onclick="clickCard(1)"></div>
         </div>
         <div id="mini-card-area">
-            <div id="deck-status" style="font-size:11px; color:#e6b322; margin-bottom:8px;">📋 남은 덱: -장</div>
+            <div id="deck-status" style="font-size:11px; color:#e6b322; margin-bottom:8px;">현재까지 공개된 카드 (남은 덱: -장)</div>
             <div id="mini-card-container" class="mini-card-wrap"></div>
         </div>
     </div>
@@ -148,7 +148,6 @@
             players = data.playerStates;
             document.getElementById('player-count').innerText = data.count;
             
-            // 내 탈락 여부 실시간 확인
             const me = data.playerStates.find(p => p.name === myName);
             if (me) isEliminated = me.isEliminated;
 
@@ -161,7 +160,6 @@
             }
             document.getElementById('player-names-box').innerHTML = data.playerStates.map(p => `<span style="${p.isEliminated ? 'text-decoration:line-through;color:red;' : ''}">${p.name}</span>`).join(" | ");
             
-            // 탈락자 화면 갱신을 위해 턴 안내 다시 체크
             if(isEliminated && data.isStarted) {
                 document.getElementById('turn-info').innerHTML = `<span style="color:#ff5252;">💀 ${myName} 패배! (관전 중...)</span>`;
             }
@@ -179,7 +177,6 @@
             document.getElementById('retry-btn').style.display = 'none';
             isMyTurn = (data.turnId === socket.id);
             
-            // 탈락하지 않은 경우에만 차례 안내 표시
             if(!isEliminated) {
                 document.getElementById('turn-info').innerText = isMyTurn ? "🔴 당신의 차례!" : `⌛ ${data.turnName}의 차례...`;
             } else {
@@ -234,10 +231,22 @@
 
         socket.on('updateCardStats', (data) => {
             const { stats, deckCount } = data;
-            document.getElementById('deck-status').innerText = `📋 남은 덱: ${deckCount}장 (클릭 시 능력 확인)`;
+            
+            document.getElementById('deck-status').innerText = `현재까지 공개된 카드 (남은 덱: ${deckCount}장)`;
+            
             document.getElementById('mini-card-container').innerHTML = stats.map(s => {
-                const isSoldOut = s.remaining === 0 ? "sold-out" : "";
-                return `<div class="mini-card ${isSoldOut}" onclick="showNotice('${s.emoji}${s.name}: ${cardInfo[s.num].desc}')"><b>${s.emoji}</b><span>${s.name} (${s.num})</span><div style="font-size:9px;color:#aaa;">${s.remaining}/${s.total}</div></div>`;
+                const isAllOut = s.discarded === s.total;
+                const cardClass = isAllOut ? "mini-card sold-out" : "mini-card";
+                const countColor = isAllOut ? "#ff5252" : "#aaa";
+                
+                return `
+                    <div class="${cardClass}" onclick="showNotice('${s.emoji}${s.name}: ${cardInfo[s.num].desc}')">
+                        <b>${s.emoji}</b>
+                        <span>${s.name}(${s.num})</span>
+                        <div style="font-size:10px; color:${countColor}; font-weight:${isAllOut ? 'bold' : 'normal'};">
+                            ${s.discarded} / ${s.total}
+                        </div>
+                    </div>`;
             }).join("");
         });
     </script>
