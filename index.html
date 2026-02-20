@@ -5,85 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
       body { text-align: center; font-family: 'Noto Sans KR', sans-serif; background-color: #2e2b26; color: #f0e6d2; margin: 0; padding: 0; }
-      #login-screen { display: flex; flex-direction: column; justify-content: center; height: 100vh; align-items: center; background-color: #2e2b26; }
+      #login-screen { display: flex; flex-direction: column; justify-content: center; height: 100vh; align-items: center; }
       input { padding: 15px; font-size: 20px; border-radius: 5px; border: 2px solid #8c7b6c; background-color: #4a4036; color: white; text-align: center; margin-bottom: 20px; width: 80%; max-width: 300px; }
       .btn-custom { padding: 15px 30px; font-size: 22px; background-color: #a63737; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
-      #game-screen { display: none !important; max-width: 600px; margin: 0 auto; padding: 10px; height: 100vh; box-sizing: border-box; position: relative; flex-direction: column; }
-      #top-bar { display: flex; flex-direction: column; background: rgba(0,0,0,0.4); border-radius: 10px; margin-bottom: 5px; padding: 10px; border: 1px solid #5c5042;}
-      #room-info-display { font-size: 16px; font-weight: bold; color: #d4c5a9; text-align: left; }
-      #player-names-box { font-size: 13px; color: #9c8e7e; margin-top: 5px; text-align: left; width: 100%; }
-      #game-log { background-color: rgba(0,0,0,0.3); height: 15vh; overflow-y: auto; text-align: left; padding: 10px; border-radius: 10px; font-size: 14px; color: #e0d0b8; border: 1px solid #5c5042; margin-bottom: 5px; flex-shrink: 0; }
-      .log-item { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px; }
-      #turn-info { font-size: 20px; color: #e6b322; font-weight: bold; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
-      #hand-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; flex: 1; align-items: center; }
-      .card { background-color: #f5f0e1; color: #2e2b26; width: 155px; height: 240px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; border: 4px solid #d4c5a9; box-shadow: 0 5px 15px rgba(0,0,0,0.6); cursor: pointer; transition: transform 0.2s; text-align: center; padding: 8px; }
-      .card-name { font-size: 28px; margin-bottom: 10px; line-height: 1.2; font-family: "Gungsuh", serif; }
-      .card-desc { font-size: 14px; color: #554433; font-weight: normal; line-height: 1.4; word-break: keep-all; }
-      .card:active { transform: scale(0.95); }
-      .card.disabled { opacity: 0.6; filter: grayscale(80%); cursor: not-allowed; }
+      #game-screen { display: none !important; max-width: 600px; margin: 0 auto; padding: 10px; height: 100vh; flex-direction: column; box-sizing: border-box; }
+      #top-bar { display: flex; flex-direction: column; background: rgba(0,0,0,0.4); border-radius: 10px; margin-bottom: 5px; padding: 10px; border: 1px solid #5c5042; }
+      #game-log { background: rgba(0,0,0,0.3); height: 15vh; overflow-y: auto; padding: 10px; border-radius: 10px; font-size: 14px; margin-bottom: 5px; text-align: left; border: 1px solid #5c5042; }
+      .log-item { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+      #hand-container { display: flex; justify-content: center; gap: 10px; flex: 1; align-items: center; }
+      .card { background: #f5f0e1; color: #2e2b26; width: 150px; height: 230px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px solid #d4c5a9; cursor: pointer; text-align: center; padding: 6px; box-shadow: 0 5px 15px rgba(0,0,0,0.6); }
+      .card-name { font-size: 30px; margin-bottom: 8px; font-family: "Gungsuh", serif; }
+      .card-desc { font-size: 14px; font-weight: normal; word-break: keep-all; }
+      .card.disabled { opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
       #mini-card-area { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px 8px; margin-top: auto; border: 1px solid #5c5042; }
       .mini-card-wrap { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-      .mini-card { width: 23%; max-width: 80px; height: 60px; background-color: #5c5042; color: #e0d0b8; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); border: 1px solid #3d342b; cursor: pointer; transition: transform 0.1s; }
-      .mini-card.out { background-color: #2b2520; color: #555; border-color: #222; }
-      .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
-      .overlay h2 { margin-bottom: 15px; color: #f0e6d2; text-align: center; font-size: 24px;}
-      .overlay-content { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 90%; }
-      .overlay-btn { padding: 15px 20px; font-size: 18px; background-color: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; cursor: pointer; margin-bottom: 5px; }
-      #notice-box { background-color: #2e2b26; border: 2px solid #e6b322; padding: 20px; border-radius: 10px; width: 80%; max-width: 300px; text-align: center; box-shadow: 0 0 20px rgba(230, 179, 34, 0.3); }
-      #notice-text { font-size: 18px; color: #fff; margin-bottom: 20px; line-height: 1.5; }
+      .mini-card { width: 22%; max-width: 80px; height: 60px; background: #5c5042; color: #e0d0b8; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; border: 1px solid #3d342b; }
+      .mini-card.out { background: #2b2520; color: #555; }
+      .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+      .overlay-btn { padding: 15px; margin: 5px; width: 85%; max-width: 250px; background: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; font-size: 18px; }
+      #notice-box { background: #2e2b26; border: 2px solid #e6b322; padding: 20px; border-radius: 10px; width: 80%; max-width: 300px; text-align: center; }
     </style>
   </head>
   <body>
     <div id="login-screen">
-      <h1 style="color: #e6b322; font-size: 45px; margin-bottom: 30px; font-family: 'Gungsuh', serif;">조선시대<br>러브레터</h1>
+      <h1 style="color: #e6b322; font-size: 45px; font-family: 'Gungsuh';">조선시대<br>러브레터</h1>
       <input type="text" id="nickname" placeholder="이름을 입력하시오" />
-      <button class="btn-custom" onclick="joinGame()" style="margin-top: 20px;">입장하기</button>
+      <button class="btn-custom" onclick="joinGame()">입장하기</button>
     </div>
 
     <div id="game-screen">
       <div id="top-bar">
-        <div style="display:flex; justify-content: space-between; align-items: center;">
-          <div id="room-info-display">방: 1 (<span id="player-count">0</span>/4)</div>
-          <button id="start-btn" onclick="requestStart()" style="display:none; padding:8px 15px; background-color:#3e6b46; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size:14px;">▶ 게임 시작</button>
+        <div style="display: flex; justify-content: space-between;">
+          <span id="room-info-display">방: 1 (<span id="player-count">0</span>/4)</span>
+          <button id="start-btn" onclick="requestStart()" style="display:none; background:#3e6b46; color:white; border:none; border-radius:5px; padding:5px 10px; font-weight:bold;">▶ 게임 시작</button>
         </div>
-        <div id="player-names-box">대기중...</div>
+        <div id="player-names-box" style="font-size:12px; margin-top:5px; text-align:left; color:#9c8e7e;">대기 중...</div>
       </div>
       <div id="game-log"></div>
-      <div id="turn-info">모든 플레이어가 방에 들어오면 게임시작 버튼을 눌러주세요</div>
+      <div id="turn-info">대기 중...</div>
       <div id="hand-container">
         <div class="card disabled" id="card0" onclick="clickCard(0)"></div>
         <div class="card disabled" id="card1" onclick="clickCard(1)"></div>
       </div>
       <div id="mini-card-area">
-        <div style="font-size: 13px; color: #e6b322; margin-bottom: 8px; font-weight: bold;">📋 남은 카드 (클릭 시 능력 확인)</div>
+        <div style="font-size:12px; color:#e6b322; margin-bottom:5px;">📋 남은 카드 (클릭 시 능력 확인)</div>
         <div id="mini-card-container" class="mini-card-wrap"></div>
       </div>
     </div>
 
     <div id="target-overlay" class="overlay">
-      <h2>누구를 지목하시겠습니까?</h2>
+      <h2 style="color: #f0e6d2;">누구를 지목하시겠습니까?</h2>
       <div id="target-buttons" style="display:flex; flex-direction:column; align-items:center; width:100%;"></div>
-      <button class="btn-custom" style="margin-top:20px; background-color:#333; font-size:16px;" onclick="closeOverlay()">취소</button>
+      <button class="btn-custom" style="margin-top:20px; background:#333; font-size:16px;" onclick="closeOverlay()">취소</button>
     </div>
 
     <div id="guess-overlay" class="overlay">
-      <h2>상대의 카드는?</h2>
-      <div class="overlay-content">
-        <button class="overlay-btn" style="background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('🎭광대(2)')">🎭광대(2)</button>
-        <button class="overlay-btn" style="background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('⚔️검객(3)')">⚔️검객(3)</button>
-        <button class="overlay-btn" style="background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('💊의녀(4)')">💊의녀(4)</button>
-        <button class="overlay-btn" style="background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('🗡️자객(5)')">🗡️자객(5)</button>
-        <button class="overlay-btn" style="background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('👑임금(6)')">👑임금(6)</button>
-        <button class="overlay-btn" style="background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('🌺후궁(7)')">🌺후궁(7)</button>
-        <button class="overlay-btn" style="background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('👸왕비(8)')">👸왕비(8)</button>
+      <h2 style="color: #f0e6d2;">상대의 카드는?</h2>
+      <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px;">
+        <button class="overlay-btn" style="width:40%; background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('🎭광대(2)')">🎭광대(2)</button>
+        <button class="overlay-btn" style="width:40%; background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('⚔️검객(3)')">⚔️검객(3)</button>
+        <button class="overlay-btn" style="width:40%; background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('💊의녀(4)')">💊의녀(4)</button>
+        <button class="overlay-btn" style="width:40%; background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('🗡️자객(5)')">🗡️자객(5)</button>
+        <button class="overlay-btn" style="width:40%; background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('👑임금(6)')">👑임금(6)</button>
+        <button class="overlay-btn" style="width:40%; background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('🌺후궁(7)')">🌺후궁(7)</button>
+        <button class="overlay-btn" style="width:40%; background:#e6b322; color:black; font-weight:bold;" onclick="submitMove('👸왕비(8)')">👸왕비(8)</button>
       </div>
-      <button class="btn-custom" style="margin-top:20px; background-color:#333; font-size:16px;" onclick="closeOverlay()">취소</button>
+      <button class="btn-custom" style="margin-top:20px; background:#333; font-size:16px;" onclick="closeOverlay()">취소</button>
     </div>
 
     <div id="notice-overlay" class="overlay">
       <div id="notice-box">
-        <div id="notice-text"></div>
-        <button class="btn-custom" style="font-size:16px; padding:10px 20px;" onclick="closeOverlay()">확인</button>
+        <div id="notice-text" style="color: white; margin-bottom: 20px; line-height:1.4;"></div>
+        <button class="btn-custom" style="font-size: 16px; padding:10px 20px;" onclick="closeOverlay()">확인</button>
       </div>
     </div>
 
@@ -91,28 +84,7 @@
     <script>
       var socket = io();
       var myHand = [], currentPlayers = [], isMyTurn = false, selectedCardIdx = -1, myName = "", selectedTarget = "";
-      
-      const cardFullInfo = {
-        "1": "지목한 이의 번호를 맞히면 탈락시킵니다 (포졸 제외).",
-        "2": "상대 1명의 카드를 몰래 확인합니다.",
-        "3": "상대 1명과 숫자를 비교하여 낮은 이가 탈락합니다.",
-        "4": "다음 내 차례 전까지 모든 공격을 막아냅니다.",
-        "5": "지목한 이의 카드를 버리게 하고 새로 뽑게 합니다.",
-        "6": "상대 1명과 카드를 서로 맞바꿉니다.",
-        "7": "자객(5)이나 임금(6)이 있다면 반드시 먼저 버려야 합니다.",
-        "8": "이 카드가 버려지면 즉시 패배합니다."
-      };
-
-      const cardDescriptions = {
-        "1": "상대 1명을 지목해 카드 번호를 추측합니다(포졸 제외). 맞히면 상대는 즉시 탈락!",
-        "2": "상대 1명의 카드를 몰래 확인합니다.",
-        "3": "상대 1명과 숫자를 비교합니다. 숫자가 낮은 사람이 탈락합니다.",
-        "4": "다음 내 차례 전까지 다른 플레이어의 공격을 받지 않습니다.",
-        "5": "자신 또는 상대 1명을 지목해 가진 카드를 버리고 새로 뽑습니다.",
-        "6": "상대 1명과 카드를 서로 맞바꿉니다.",
-        "7": "5번 또는 6번 카드가 손에 있다면 반드시 이 카드를 먼저 버려야 합니다.",
-        "8": "절대 버릴 수 없습니다. 버려지면 즉시 패배합니다."
-      };
+      const cardDescriptions = { "1":"포졸", "2":"상대 패 확인", "3":"숫자 비교 대결", "4":"다음 턴까지 보호", "5":"강제로 패 버리기", "6":"패 맞바꾸기", "7":"자객/임금과 있을 때 우선 버림", "8":"버려지면 패배" };
 
       function joinGame() {
         myName = document.getElementById('nickname').value;
@@ -129,7 +101,7 @@
         document.getElementById('player-count').innerText = data.count;
         document.getElementById('player-names-box').innerText = "명단: " + currentPlayers.map(p => p.isEliminated ? `[탈락]${p.name}` : p.name).join(', ');
         document.getElementById('start-btn').style.display = (data.count >= 2 && !data.isStarted) ? 'block' : 'none';
-        if(!data.isStarted) document.getElementById('turn-info').innerText = "모든 플레이어가 방에 들어오면 게임시작 버튼을 눌러주세요";
+        if(!data.isStarted) document.getElementById('turn-info').innerText = "모두 오면 시작을 누르시오";
       });
 
       socket.on('gameLog', (msg) => {
@@ -148,21 +120,21 @@
 
       socket.on('updateHand', (cards) => {
         myHand = cards;
+        const cardNames = { "1":"포졸", "2":"광대", "3":"검객", "4":"의녀", "5":"자객", "6":"임금", "7":"후궁", "8":"왕비" };
         const render = (id, cardStr) => {
           const el = document.getElementById(id);
           if(!cardStr) { el.innerHTML = ""; return; }
           const num = cardStr.replace(/[^0-9]/g, "");
-          el.innerHTML = `<div class="card-name">${cardStr}</div><div class="card-desc">${cardFullInfo[num]}</div>`;
+          el.innerHTML = `<div class="card-name">${cardStr}</div><div class="card-desc">${cardDescriptions[num]}</div>`;
         };
         render('card0', myHand[0]); render('card1', myHand[1]);
       });
 
       socket.on('updateCardStats', (stats) => {
-        const cardNames = { "1":"포졸", "2":"광대", "3":"검객", "4":"의녀", "5":"자객", "6":"임금", "7":"후궁", "8":"왕비" };
         let html = "";
         stats.forEach(item => {
-          html += `<div class="mini-card ${item.remaining === 0 ? 'out' : ''}" onclick="showCardInfo('${item.num}', '${cardNames[item.num]}')">
-            <div style="font-size:9px;">(${item.num})</div><div>${cardNames[item.num]}</div>
+          html += `<div class="mini-card ${item.remaining === 0 ? 'out' : ''}" onclick="showCardInfo('${item.num}', '${item.name}')">
+            <div style="font-size:9px;">(${item.num})</div><div>${item.name}</div>
             <div style="font-size:9px;">${item.remaining}/${item.total}</div>
           </div>`;
         });
@@ -170,7 +142,8 @@
       });
 
       function showCardInfo(num, name) {
-        document.getElementById('notice-text').innerHTML = `<b style="color:#e6b322; font-size:22px; font-family:Gungsuh;">${name}(${num})</b><br><br>${cardDescriptions[num]}`;
+        const descs = { "1":"상대 1명을 지목해 카드 번호를 추측합니다(포졸 제외). 맞히면 상대는 즉시 탈락!", "2":"상대 1명의 카드를 몰래 확인합니다.", "3":"상대 1명과 숫자를 비교합니다. 숫자가 낮은 사람이 탈락합니다.", "4":"다음 내 차례 전까지 다른 플레이어의 공격을 받지 않습니다.", "5":"자신 또는 상대 1명을 지목해 가진 카드를 버리고 새로 뽑습니다.", "6":"상대 1명과 카드를 서로 맞바꿉니다.", "7":"5번 또는 6번 카드가 손에 있다면 반드시 이 카드를 먼저 버려야 합니다.", "8":"절대 버릴 수 없습니다. 버려지면 즉시 패배합니다." };
+        document.getElementById('notice-text').innerHTML = `<b style="color:#e6b322">${name}(${num})</b><br><br>${descs[num]}`;
         document.getElementById('notice-overlay').style.display = 'flex';
       }
 
@@ -183,11 +156,8 @@
         } else {
           let html = "";
           currentPlayers.forEach(p => {
-            // 5번 카드(자객)일 때는 나 자신도 목록에 포함함
-            if (card.includes("자객") && p.name === myName && !p.isEliminated) {
-                html += `<button class="overlay-btn" style="background:#4a6741;" onclick="selectTarget('${p.name}')">${p.name} (나 자신)</button>`;
-            } else if (p.name !== myName && !p.isEliminated) {
-                html += `<button class="overlay-btn" onclick="selectTarget('${p.name}')">${p.name}</button>`;
+            if(p.name !== myName && !p.isEliminated) {
+              html += `<button class="overlay-btn" onclick="selectTarget('${p.name}')">${p.name}</button>`;
             }
           });
           document.getElementById('target-buttons').innerHTML = html || "지목할 생존자가 없습니다.";
