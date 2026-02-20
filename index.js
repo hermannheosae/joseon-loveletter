@@ -5,19 +5,16 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
 
+app.use(express.static(__dirname));
+
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
 
 const deckMaster = [
   "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)",
-  "🎭광대(2)", "🎭광대(2)",       
-  "⚔️검객(3)", "⚔️검객(3)",       
-  "💊의녀(4)", "💊의녀(4)",       
-  "🗡️자객(5)", "🗡️자객(5)",       
-  "👑임금(6)",                    
-  "🌺후궁(7)",                    
-  "👸왕비(8)"                     
+  "🎭광대(2)", "🎭광대(2)", "⚔️검객(3)", "⚔️검객(3)", "💊의녀(4)", 
+  "💊의녀(4)", "🗡️자객(5)", "🗡️자객(5)", "👑임금(6)", "🌺후궁(7)", "👸왕비(8)"
 ];
 
 const cardTotalCounts = { "1":5, "2":2, "3":2, "4":2, "5":2, "6":1, "7":1, "8":1 };
@@ -53,7 +50,6 @@ io.on('connection', (socket) => {
 
     io.to(roomName).emit('gameLog', `📢 [${name}] 님이 입장하셨습니다.`);
     broadcastRoomInfo(roomName);
-    sendCardStats(roomName);
   });
 
   socket.on('requestStart', () => {
@@ -69,72 +65,85 @@ io.on('connection', (socket) => {
     if (!room || !room.isGameStarted) return;
     if (room.playerOrder[room.turnIndex] !== socket.id) return;
 
-    const attacker = room.players[socket.id];
+    const attackerId = socket.id;
+    const attacker = room.players[attackerId];
     const cardName = data.card;
     const targetName = data.target;
     const guess = data.guess;
 
-    // 후궁 제약 조건
-    if (cardName.includes("자객") || cardName.includes("임금")) {
-      if (attacker.hand.some(c => c.includes("후궁"))) {
-        socket.emit('privateNotice', '✋ 후궁(7)이 손에 있을 때는 이 카드를 낼 수 없습니다! 후궁을 먼저 버리십시오.');
-        return;
-      }
-    }
-
+    // 1. 카드 제거 및 버림패 추가
+    const cardIdx = attacker.hand.indexOf(cardName);
+    if (cardIdx > -1) attacker.hand.splice(cardIdx, 1);
     room.discardedCards.push(cardName);
+
     const targetId = Object.keys(room.players).find(id => room.players[id].name === targetName);
     const targetPlayer = targetId ? room.players[targetId] : null;
 
-    if (targetPlayer && targetPlayer.isProtected && targetId !== socket.id) {
-       io.to(roomName).emit('gameLog', `🛡️ [${targetName}]님은 의녀의 치료 중이라 안전합니다.`);
-    } else if (cardName.includes("포졸") && targetPlayer) {
-      if (targetPlayer.hand.some(c => c.includes(guess))) {
-        io.to(roomName).emit('gameLog', `🎉 체포 성공! [${targetName}]님 탈락!`);
+    // 2. 효과 처리
+    if (targetPlayer && targetPlayer.isProtected && targetId !== attackerId) {
+      io.to(roomName).emit('gameLog', `🛡️ [${targetName}]님은 의녀의 치료 중이라 효과가 무효화됩니다.`);
+    } 
+    else if (cardName.includes("포졸") && targetPlayer) {
+      if (targetPlayer.hand[0].includes(guess)) {
+        io.to(roomName).emit('gameLog', `🎉 체포 성공! [${targetName}]의 패는 [${guess}]였습니다!`);
         eliminatePlayer(roomName, targetId);
       } else {
-        io.to(roomName).emit('gameLog', `💨 체포 실패!`);
+        io.to(roomName).emit('gameLog', `💨 [${attacker.name}]의 체포 실패!`);
       }
-    } else if (cardName.includes("광대") && targetPlayer) {
-      socket.emit('privateNotice', `🎭 [${targetName}]의 패: ${targetPlayer.hand}`);
-    } else if (cardName.includes("검객") && targetPlayer) {
-      const myCard = attacker.hand.find(c => c !== cardName) || attacker.hand[0];
-      const myVal = getCardValue(myCard);
+    } 
+    else if (cardName.includes("광대") && targetPlayer) {
+      socket.emit('privateNotice', `🎭 [${targetName}]의 패는 [${targetPlayer.hand[0]}]입니다.`);
+    } 
+    else if (cardName.includes("검객") && targetPlayer) {
+      const myVal = getCardValue(attacker.hand[0]);
       const targetVal = getCardValue(targetPlayer.hand[0]);
-      if (myVal > targetVal) eliminatePlayer(roomName, targetId);
-      else if (myVal < targetVal) eliminatePlayer(roomName, socket.id);
-      else io.to(roomName).emit('gameLog', `🤝 무승부!`);
-    } else if (cardName.includes("의녀")) {
+      if (myVal > targetVal) {
+        io.to(roomName).emit('gameLog', `⚔️ 대결 승리! [${targetName}] 탈락!`);
+        eliminatePlayer(roomName, targetId);
+      } else if (myVal < targetVal) {
+        io.to(roomName).emit('gameLog', `⚔️ 대결 패배! [${attacker.name}] 탈락!`);
+        eliminatePlayer(roomName, attackerId);
+      } else {
+        io.to(roomName).emit('gameLog', `⚔️ 비겼습니다! 아무도 탈락하지 않습니다.`);
+      }
+    } 
+    else if (cardName.includes("의녀")) {
       attacker.isProtected = true;
-    } else if (cardName.includes("자객") && targetPlayer) {
+    } 
+    else if (cardName.includes("자객") && targetPlayer) {
       const discarded = targetPlayer.hand.pop();
       room.discardedCards.push(discarded);
-      if (discarded && discarded.includes("왕비")) eliminatePlayer(roomName, targetId);
-      else {
-        const newCard = drawCard(room);
-        if (newCard) targetPlayer.hand.push(newCard);
-        io.to(targetId).emit('updateHand', targetPlayer.hand);
+      io.to(roomName).emit('gameLog', `🗡️ [${targetName}]님이 패 [${discarded}]를 버렸습니다.`);
+      if (discarded.includes("왕비")) {
+        eliminatePlayer(roomName, targetId);
+      } else {
+        const nextCard = drawCard(room);
+        if (nextCard) {
+          targetPlayer.hand.push(nextCard);
+          io.to(targetId).emit('updateHand', targetPlayer.hand);
+        }
       }
-    } else if (cardName.includes("임금") && targetPlayer) {
-      const myCard = attacker.hand.find(c => c !== cardName);
-      const targetCard = targetPlayer.hand[0];
-      attacker.hand = [cardName, targetCard];
-      targetPlayer.hand = [myCard];
-      socket.emit('updateHand', [targetCard]);
-      io.to(targetId).emit('updateHand', [myCard]);
-    } else if (cardName.includes("왕비")) {
-      eliminatePlayer(roomName, socket.id);
+    } 
+    else if (cardName.includes("임금") && targetPlayer) {
+      const myRemainingCard = attacker.hand.pop();
+      const targetCard = targetPlayer.hand.pop();
+      attacker.hand.push(targetCard);
+      targetPlayer.hand.push(myRemainingCard);
+      io.to(attackerId).emit('updateHand', attacker.hand);
+      io.to(targetId).emit('updateHand', targetPlayer.hand);
+      io.to(roomName).emit('gameLog', `👑 [${attacker.name}]와 [${targetName}]의 패가 바뀌었습니다.`);
+    } 
+    else if (cardName.includes("왕비")) {
+      eliminatePlayer(roomName, attackerId);
     }
 
-    if (!room.players[socket.id].isEliminated) {
-      const idx = attacker.hand.indexOf(cardName);
-      if (idx > -1) attacker.hand.splice(idx, 1);
-      socket.emit('updateHand', attacker.hand);
-    }
-
+    // 결과 업데이트
+    socket.emit('updateHand', attacker.hand);
     sendCardStats(roomName);
-    if (checkWinCondition(roomName)) return;
-    nextTurn(roomName);
+    
+    if (!checkWinCondition(roomName)) {
+      nextTurn(roomName);
+    }
   });
 
   socket.on('disconnect', () => {
@@ -148,27 +157,20 @@ io.on('connection', (socket) => {
   });
 });
 
-function broadcastRoomInfo(roomName) {
-  const room = rooms[roomName];
-  if (!room) return;
-  const playerStates = room.playerOrder.map(id => ({
-    name: room.players[id].name,
-    isEliminated: room.players[id].isEliminated
-  }));
-  io.to(roomName).emit('roomInfo', { roomName, count: room.playerOrder.length, playerStates, isStarted: room.isGameStarted });
-}
-
 function startGame(roomName) {
   const room = rooms[roomName];
   room.isGameStarted = true;
   room.deck = [...deckMaster].sort(() => Math.random() - 0.5);
+  room.deck.pop(); // 시작 시 한 장 제거
   room.discardedCards = [];
+  
   room.playerOrder.forEach(id => {
     room.players[id].hand = [drawCard(room)];
     room.players[id].isEliminated = false;
     room.players[id].isProtected = false;
     io.to(id).emit('updateHand', room.players[id].hand);
   });
+  
   room.turnIndex = 0;
   nextTurn(roomName, true);
   broadcastRoomInfo(roomName);
@@ -176,52 +178,70 @@ function startGame(roomName) {
 
 function nextTurn(roomName, isFirst = false) {
   const room = rooms[roomName];
-  if(!isFirst) {
+  if (!isFirst) {
     do { room.turnIndex = (room.turnIndex + 1) % room.playerOrder.length; } 
     while (room.players[room.playerOrder[room.turnIndex]].isEliminated);
   }
+
   const id = room.playerOrder[room.turnIndex];
   const p = room.players[id];
   p.isProtected = false;
+
   const card = drawCard(room);
   if (card) {
     p.hand.push(card);
     io.to(id).emit('updateHand', p.hand);
     io.to(roomName).emit('turnUpdate', { turnName: p.name, turnId: id });
-  } else { determineWinnerByScore(roomName); }
+  } else {
+    determineWinnerByScore(roomName); // 덱 소진 시 판정
+  }
 }
 
-function eliminatePlayer(roomName, id) {
-  rooms[roomName].players[id].isEliminated = true;
-  rooms[roomName].players[id].hand = [];
-  io.to(id).emit('updateHand', []);
-  io.to(id).emit('privateNotice', "💀 당신은 제거되었습니다.");
-  broadcastRoomInfo(roomName);
+function determineWinnerByScore(roomName) {
+  const room = rooms[roomName];
+  let survivors = room.playerOrder
+    .filter(id => !room.players[id].isEliminated)
+    .map(id => ({ id, name: room.players[id].name, score: getCardValue(room.players[id].hand[0]) }));
+  
+  survivors.sort((a, b) => b.score - a.score);
+  io.to(roomName).emit('gameLog', `🎴 덱 소진! 패 비교 결과 [${survivors[0].name}]님 승리!`);
+  endGame(roomName, survivors[0].id);
 }
 
 function checkWinCondition(roomName) {
   const survivors = rooms[roomName].playerOrder.filter(id => !rooms[roomName].players[id].isEliminated);
-  if (survivors.length === 1) { endGame(roomName, survivors[0]); return true; }
+  if (survivors.length === 1) {
+    endGame(roomName, survivors[0]);
+    return true;
+  }
   return false;
 }
 
+function eliminatePlayer(roomName, id) {
+  const room = rooms[roomName];
+  room.players[id].isEliminated = true;
+  if(room.players[id].hand.length > 0) room.discardedCards.push(room.players[id].hand[0]);
+  room.players[id].hand = [];
+  io.to(id).emit('updateHand', []);
+  io.to(roomName).emit('gameLog', `💀 [${room.players[id].name}]님이 탈락했습니다.`);
+  broadcastRoomInfo(roomName);
+}
+
 function endGame(roomName, id) {
-  io.to(roomName).emit('gameLog', `👑 최종 승리: [${rooms[roomName].players[id].name}] 👑`);
   rooms[roomName].isGameStarted = false;
+  io.to(roomName).emit('gameLog', `🏆 최종 우승: [${rooms[roomName].players[id].name}]`);
   broadcastRoomInfo(roomName);
 }
 
 function drawCard(room) { return room.deck.pop(); }
-function getCardValue(name) { return parseInt(name.replace(/[^0-9]/g, "")); }
+function getCardValue(name) { return parseInt(name.replace(/[^0-9]/g, "")) || 0; }
 
 function sendCardStats(roomName) {
   const room = rooms[roomName];
-  if (!room) return;
   let currentCounts = {};
   room.discardedCards.forEach(card => {
     let val = getCardValue(card);
-    if (!currentCounts[val]) currentCounts[val] = 0;
-    currentCounts[val]++;
+    currentCounts[val] = (currentCounts[val] || 0) + 1;
   });
   let stats = [];
   const cardNames = { "1":"포졸", "2":"광대", "3":"검객", "4":"의녀", "5":"자객", "6":"임금", "7":"후궁", "8":"왕비" };
@@ -232,5 +252,15 @@ function sendCardStats(roomName) {
   io.to(roomName).emit('updateCardStats', stats);
 }
 
+function broadcastRoomInfo(roomName) {
+  const room = rooms[roomName];
+  if(!room) return;
+  const playerStates = room.playerOrder.map(id => ({
+    name: room.players[id].name,
+    isEliminated: room.players[id].isEliminated
+  }));
+  io.to(roomName).emit('roomInfo', { roomName, count: room.playerOrder.length, playerStates, isStarted: room.isGameStarted });
+}
+
 const port = process.env.PORT || 10000;
-server.listen(port, () => { console.log("서버 가동 포트:", port); });
+server.listen(port, () => { console.log("서버 실행 중..."); });
