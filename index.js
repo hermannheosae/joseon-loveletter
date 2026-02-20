@@ -11,6 +11,7 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
 
+// 카드 구성 및 설명 (서버 관리용)
 const deckMaster = [
   "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)",
   "🎭광대(2)", "🎭광대(2)", "⚔️검객(3)", "⚔️검객(3)", "💊의녀(4)", 
@@ -71,7 +72,6 @@ io.on('connection', (socket) => {
     const targetName = data.target;
     const guess = data.guess;
 
-    // 1. 카드 제거 및 버림패 추가
     const cardIdx = attacker.hand.indexOf(cardName);
     if (cardIdx > -1) attacker.hand.splice(cardIdx, 1);
     room.discardedCards.push(cardName);
@@ -79,9 +79,8 @@ io.on('connection', (socket) => {
     const targetId = Object.keys(room.players).find(id => room.players[id].name === targetName);
     const targetPlayer = targetId ? room.players[targetId] : null;
 
-    // 2. 효과 처리
     if (targetPlayer && targetPlayer.isProtected && targetId !== attackerId) {
-      io.to(roomName).emit('gameLog', `🛡️ [${targetName}]님은 의녀의 치료 중이라 효과가 무효화됩니다.`);
+      io.to(roomName).emit('gameLog', `🛡️ [${targetName}]님은 의녀의 치료 중이라 효과 무효!`);
     } 
     else if (cardName.includes("포졸") && targetPlayer) {
       if (targetPlayer.hand[0].includes(guess)) {
@@ -104,7 +103,7 @@ io.on('connection', (socket) => {
         io.to(roomName).emit('gameLog', `⚔️ 대결 패배! [${attacker.name}] 탈락!`);
         eliminatePlayer(roomName, attackerId);
       } else {
-        io.to(roomName).emit('gameLog', `⚔️ 비겼습니다! 아무도 탈락하지 않습니다.`);
+        io.to(roomName).emit('gameLog', `⚔️ 비겼습니다!`);
       }
     } 
     else if (cardName.includes("의녀")) {
@@ -137,7 +136,6 @@ io.on('connection', (socket) => {
       eliminatePlayer(roomName, attackerId);
     }
 
-    // 결과 업데이트
     socket.emit('updateHand', attacker.hand);
     sendCardStats(roomName);
     
@@ -161,16 +159,14 @@ function startGame(roomName) {
   const room = rooms[roomName];
   room.isGameStarted = true;
   room.deck = [...deckMaster].sort(() => Math.random() - 0.5);
-  room.deck.pop(); // 시작 시 한 장 제거
+  room.deck.pop(); 
   room.discardedCards = [];
-  
   room.playerOrder.forEach(id => {
     room.players[id].hand = [drawCard(room)];
     room.players[id].isEliminated = false;
     room.players[id].isProtected = false;
     io.to(id).emit('updateHand', room.players[id].hand);
   });
-  
   room.turnIndex = 0;
   nextTurn(roomName, true);
   broadcastRoomInfo(roomName);
@@ -182,18 +178,16 @@ function nextTurn(roomName, isFirst = false) {
     do { room.turnIndex = (room.turnIndex + 1) % room.playerOrder.length; } 
     while (room.players[room.playerOrder[room.turnIndex]].isEliminated);
   }
-
   const id = room.playerOrder[room.turnIndex];
   const p = room.players[id];
   p.isProtected = false;
-
   const card = drawCard(room);
   if (card) {
     p.hand.push(card);
     io.to(id).emit('updateHand', p.hand);
     io.to(roomName).emit('turnUpdate', { turnName: p.name, turnId: id });
   } else {
-    determineWinnerByScore(roomName); // 덱 소진 시 판정
+    determineWinnerByScore(roomName);
   }
 }
 
@@ -202,9 +196,8 @@ function determineWinnerByScore(roomName) {
   let survivors = room.playerOrder
     .filter(id => !room.players[id].isEliminated)
     .map(id => ({ id, name: room.players[id].name, score: getCardValue(room.players[id].hand[0]) }));
-  
   survivors.sort((a, b) => b.score - a.score);
-  io.to(roomName).emit('gameLog', `🎴 덱 소진! 패 비교 결과 [${survivors[0].name}]님 승리!`);
+  io.to(roomName).emit('gameLog', `🎴 덱 소진! [${survivors[0].name}]님 최종 승리!`);
   endGame(roomName, survivors[0].id);
 }
 
@@ -223,13 +216,13 @@ function eliminatePlayer(roomName, id) {
   if(room.players[id].hand.length > 0) room.discardedCards.push(room.players[id].hand[0]);
   room.players[id].hand = [];
   io.to(id).emit('updateHand', []);
-  io.to(roomName).emit('gameLog', `💀 [${room.players[id].name}]님이 탈락했습니다.`);
+  io.to(roomName).emit('gameLog', `💀 [${room.players[id].name}] 탈락!`);
   broadcastRoomInfo(roomName);
 }
 
 function endGame(roomName, id) {
   rooms[roomName].isGameStarted = false;
-  io.to(roomName).emit('gameLog', `🏆 최종 우승: [${rooms[roomName].players[id].name}]`);
+  io.to(roomName).emit('gameLog', `🏆 승리: [${rooms[roomName].players[id].name}]`);
   broadcastRoomInfo(roomName);
 }
 
