@@ -54,7 +54,7 @@ io.on('connection', (socket) => {
     socket.emit('updateHand', attacker.hand);
 
     if (targetPlayer && targetPlayer.isProtected && targetId !== socket.id) {
-      io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 보호 중이라 효과 무효!`);
+      io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 보호 중이라 무효!`);
     } else {
       if (cardName.includes("포졸") && targetPlayer) {
         if (targetPlayer.hand[0].includes(data.guess)) {
@@ -175,7 +175,7 @@ function endGame(roomName, id) {
   rooms[roomName].isGameStarted = false;
   const winnerName = rooms[roomName].players[id].name;
   io.to(roomName).emit('gameLog', `🏆 최종 승리자: [${winnerName}]`);
-  io.to(roomName).emit('gameOver', { winnerName: winnerName }); // 승리자 이름 포함 전송
+  io.to(roomName).emit('gameOver', { winnerName: winnerName });
   broadcastRoomInfo(roomName);
 }
 
