@@ -74,6 +74,7 @@ io.on('connection', (socket) => {
     const targetName = data.target;
     const guess = data.guess;
 
+    // 후궁 제약 조건
     if (cardName.includes("자객") || cardName.includes("임금")) {
       if (attacker.hand.some(c => c.includes("후궁"))) {
         socket.emit('privateNotice', '✋ 후궁(7)이 손에 있을 때는 이 카드를 낼 수 없습니다! 후궁을 먼저 버리십시오.');
@@ -175,45 +176,19 @@ function startGame(roomName) {
 
 function nextTurn(roomName, isFirst = false) {
   const room = rooms[roomName];
-  if (room.deck.length === 0) { 
-    determineWinnerByScore(roomName); 
-    return; 
-  }
-
   if(!isFirst) {
-    let attempts = 0;
-    do { 
-      room.turnIndex = (room.turnIndex + 1) % room.playerOrder.length; 
-      attempts++;
-    } while (room.players[room.playerOrder[room.turnIndex]].isEliminated && attempts < room.playerOrder.length);
+    do { room.turnIndex = (room.turnIndex + 1) % room.playerOrder.length; } 
+    while (room.players[room.playerOrder[room.turnIndex]].isEliminated);
   }
-  
   const id = room.playerOrder[room.turnIndex];
   const p = room.players[id];
   p.isProtected = false;
   const card = drawCard(room);
-  
   if (card) {
     p.hand.push(card);
     io.to(id).emit('updateHand', p.hand);
     io.to(roomName).emit('turnUpdate', { turnName: p.name, turnId: id });
-  } else { 
-    determineWinnerByScore(roomName); 
-  }
-}
-
-function determineWinnerByScore(roomName) {
-  const room = rooms[roomName];
-  let winnerId = null;
-  let maxScore = -1;
-  room.playerOrder.forEach(id => {
-    const p = room.players[id];
-    if (!p.isEliminated) {
-      const score = getCardValue(p.hand[0]);
-      if (score > maxScore) { maxScore = score; winnerId = id; }
-    }
-  });
-  if (winnerId) endGame(roomName, winnerId);
+  } else { determineWinnerByScore(roomName); }
 }
 
 function eliminatePlayer(roomName, id) {
@@ -237,10 +212,7 @@ function endGame(roomName, id) {
 }
 
 function drawCard(room) { return room.deck.pop(); }
-function getCardValue(name) { 
-  if(!name) return 0;
-  return parseInt(name.replace(/[^0-9]/g, "")); 
-}
+function getCardValue(name) { return parseInt(name.replace(/[^0-9]/g, "")); }
 
 function sendCardStats(roomName) {
   const room = rooms[roomName];
