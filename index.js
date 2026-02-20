@@ -1,238 +1,204 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>조선시대 러브레터</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <style>
-        body { text-align: center; font-family: 'Noto Sans KR', sans-serif; background-color: #2e2b26; color: #f0e6d2; margin: 0; padding: 0; overflow: hidden; }
-        #login-screen { display: flex; flex-direction: column; justify-content: center; height: 100vh; align-items: center; }
-        input { padding: 15px; font-size: 20px; border-radius: 5px; border: 2px solid #8c7b6c; background-color: #4a4036; color: white; text-align: center; margin-bottom: 20px; width: 80%; max-width: 300px; }
-        .btn-custom { padding: 15px 30px; font-size: 22px; background-color: #a63737; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
-        #game-screen { display: none; max-width: 600px; margin: 0 auto; padding: 10px; height: 100vh; flex-direction: column; box-sizing: border-box; }
-        #top-bar { display: flex; flex-direction: column; background: rgba(0,0,0,0.4); border-radius: 10px; margin-bottom: 5px; padding: 10px; border: 1px solid #5c5042; }
-        #game-log { background: rgba(0,0,0,0.3); height: 18vh; overflow-y: auto; padding: 10px; border-radius: 10px; font-size: 14px; margin-bottom: 5px; text-align: left; border: 1px solid #5c5042; }
-        #hand-container { display: flex; justify-content: center; gap: 10px; flex: 1; align-items: center; }
-        
-        /* 카드 클릭 영역 방해 금지 설정 */
-        .card { background: #f5f0e1; color: #2e2b26; width: 150px; height: 230px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px solid #d4c5a9; cursor: pointer; text-align: center; padding: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.6); box-sizing: border-box; pointer-events: auto; }
-        .card-name { font-size: 22px; margin-bottom: 8px; font-family: "Gungsuh", serif; font-weight: bold; pointer-events: none; }
-        .card-desc { font-size: 12px; line-height: 1.3; color: #333; pointer-events: none; }
-        
-        /* 내 차례일 때 카드가 강조됨 */
-        .card.active { border-color: #a63737; transform: scale(1.05); }
-        .card.disabled { opacity: 0.5; filter: grayscale(1); cursor: default; pointer-events: none; }
+const express = require('express');
+const app = express();
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server);
 
-        #mini-card-area { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px 8px; margin-top: auto; border: 1px solid #5c5042; }
-        .mini-card-wrap { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-        .mini-card { width: 22%; height: 75px; background: #5c5042; color: #e0d0b8; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border: 1px solid #3d342b; }
-        .mini-card.sold-out { background: #1a1a1a; color: #555; opacity: 0.6; }
-        
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
-        .overlay-btn { padding: 15px; margin: 5px; width: 85%; max-width: 250px; background: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; font-size: 18px; }
-        #notice-box { background: #f5f0e1; color: #2e2b26; padding: 25px; border-radius: 10px; width: 80%; max-width: 300px; border: 5px solid #a63737; }
-    </style>
-</head>
-<body>
-    <div id="login-screen">
-        <h1 style="color: #e6b322; font-size: 45px; font-family: 'Gungsuh';">조선시대<br>러브레터</h1>
-        <input type="text" id="nickname" placeholder="이름을 입력하시오" />
-        <button class="btn-custom" onclick="joinGame()">입장하기</button>
-    </div>
+app.use(express.static(__dirname));
+app.get('/', (req, res) => { res.sendFile(__dirname + '/index.html'); });
 
-    <div id="game-screen">
-        <div id="top-bar">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 14px;">인원: <span id="player-count">0</span>/4</span>
-                <button id="start-btn" onclick="requestStart()" style="display:none; background:#3e6b46; color:white; border:none; border-radius:5px; padding:8px 15px; font-weight:bold;">▶ 시작하기</button>
-            </div>
-            <div id="player-names-box" style="font-size:12px; margin-top:5px; text-align:left; color:#9c8e7e;"></div>
-        </div>
-        <div id="game-log"></div>
-        <div id="turn-info" style="color:#e6b322; font-weight:bold; margin: 5px 0;">입장 완료</div>
-        <div id="hand-container">
-            <div class="card disabled" id="card0" onclick="clickCard(0)"></div>
-            <div class="card disabled" id="card1" onclick="clickCard(1)"></div>
-        </div>
-        <div id="mini-card-area">
-            <div id="deck-status" style="font-size:11px; color:#e6b322; margin-bottom:8px;">📋 남은 덱: -장</div>
-            <div id="mini-card-container" class="mini-card-wrap"></div>
-        </div>
-    </div>
+const deckMaster = [
+  "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)",
+  "🎭광대(2)", "🎭광대(2)", "⚔️검객(3)", "⚔️검객(3)", "💊의녀(4)", 
+  "💊의녀(4)", "🗡️자객(5)", "🗡️자객(5)", "👑임금(6)", "🌺후궁(7)", "👸왕비(8)"
+];
 
-    <div id="target-overlay" class="overlay">
-        <h2 style="color: #f0e6d2;">대상 플레이어 선택</h2>
-        <div id="target-buttons" style="display:flex; flex-direction:column; align-items:center; width:100%;"></div>
-        <button class="overlay-btn" style="background:#333;" onclick="closeOverlay()">취소</button>
-    </div>
+const cardTotalCounts = { "1":5, "2":2, "3":2, "4":2, "5":2, "6":1, "7":1, "8":1 };
+let rooms = {};
 
-    <div id="guess-overlay" class="overlay">
-        <h2 style="color: #f0e6d2;">상대의 패는?</h2>
-        <div id="guess-buttons" style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; width:85%;">
-            <button class="overlay-btn" onclick="submitPlay('2')">🎭광대(2)</button>
-            <button class="overlay-btn" onclick="submitPlay('3')">⚔️검객(3)</button>
-            <button class="overlay-btn" onclick="submitPlay('4')">💊의녀(4)</button>
-            <button class="overlay-btn" onclick="submitPlay('5')">🗡️자객(5)</button>
-            <button class="overlay-btn" onclick="submitPlay('6')">👑임금(6)</button>
-            <button class="overlay-btn" onclick="submitPlay('7')">🌺후궁(7)</button>
-            <button class="overlay-btn" onclick="submitPlay('8')">👸왕비(8)</button>
-        </div>
-    </div>
+io.on('connection', (socket) => {
+  socket.on('login', ({ name, roomName }) => {
+    if (!roomName) roomName = "1"; 
+    socket.join(roomName);
+    socket.roomName = roomName;
+    if (!rooms[roomName]) {
+      rooms[roomName] = { players: {}, playerOrder: [], turnIndex: 0, isGameStarted: false, deck: [], discardedCards: [] };
+    }
+    const room = rooms[roomName];
+    if (room.isGameStarted || room.playerOrder.length >= 4) return;
+    room.players[socket.id] = { name: name, hand: [], isProtected: false, isEliminated: false };
+    room.playerOrder.push(socket.id);
+    io.to(roomName).emit('gameLog', `📢 [${name}] 님이 입장하셨습니다.`);
+    broadcastRoomInfo(roomName);
+  });
 
-    <div id="notice-overlay" class="overlay">
-        <div id="notice-box"><div id="notice-msg"></div><br><button class="btn-custom" onclick="closeNotice()">확인</button></div>
-    </div>
+  socket.on('requestStart', () => {
+    const room = rooms[socket.roomName];
+    if (!room || room.playerOrder.length < 2) return;
+    startGame(socket.roomName);
+  });
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        let myHand = [], isMyTurn = false, selectedCard = "", players = [], selectedTarget = "";
-        
-        const cardInfo = {
-            "1": { emoji: "👮‍♂️", name: "포졸", desc: "상대의 숫자를 맞추면 탈락시킴 (1 제외)" },
-            "2": { emoji: "🎭", name: "광대", desc: "상대의 패를 나만 몰래 봅니다." },
-            "3": { emoji: "⚔️", name: "검객", desc: "패 비교 후 낮은 숫자가 탈락합니다." },
-            "4": { emoji: "💊", name: "의녀", desc: "한 턴 동안 모든 공격을 막습니다." },
-            "5": { emoji: "🗡️", name: "자객", desc: "상대가 패를 버리고 새로 뽑게 합니다." },
-            "6": { emoji: "👑", name: "임금", desc: "상대와 패를 서로 교환합니다." },
-            "7": { emoji: "🌺", name: "후궁", desc: "임금(6)이나 자객(5)과 함께 있으면 무조건 버림" },
-            "8": { emoji: "👸", name: "왕비", desc: "버려지면 즉시 탈락합니다." }
-        };
+  socket.on('playCard', (data) => {
+    const room = rooms[socket.roomName];
+    if (!room || !room.isGameStarted || room.playerOrder[room.turnIndex] !== socket.id) return;
 
-        function showNotice(msg) { document.getElementById('notice-msg').innerText = msg; document.getElementById('notice-overlay').style.display = 'flex'; }
-        function closeNotice() { document.getElementById('notice-overlay').style.display = 'none'; }
-        
-        function joinGame() {
-            const nick = document.getElementById('nickname').value;
-            if(!nick) return showNotice("이름을 입력하시오!");
-            socket.emit('login', { name: nick });
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'flex';
+    const attacker = room.players[socket.id];
+    const cardName = data.card;
+    const targetId = Object.keys(room.players).find(id => room.players[id].name === data.target);
+    const targetPlayer = targetId ? room.players[targetId] : null;
+
+    const idx = attacker.hand.indexOf(cardName);
+    if (idx > -1) attacker.hand.splice(idx, 1);
+    room.discardedCards.push(cardName);
+    socket.emit('updateHand', attacker.hand);
+
+    if (targetPlayer && targetPlayer.isProtected && targetId !== socket.id) {
+      io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 보호 중이라 무효!`);
+    } else {
+      if (cardName.includes("포졸") && targetPlayer) {
+        if (targetPlayer.hand[0].includes(data.guess)) {
+          io.to(socket.roomName).emit('gameLog', `🎉 체포 성공! [${targetPlayer.name}] 탈락!`);
+          eliminatePlayer(socket.roomName, targetId);
+        } else { io.to(socket.roomName).emit('gameLog', `💨 [${attacker.name}]의 체포 실패!`); }
+      } else if (cardName.includes("광대") && targetPlayer) {
+        socket.emit('privateNotice', `🎭 [${targetPlayer.name}]의 패는 [${targetPlayer.hand[0]}]입니다.`);
+      } else if (cardName.includes("검객") && targetPlayer) {
+        const myVal = parseInt(attacker.hand[0].match(/\d+/)[0]);
+        const taVal = parseInt(targetPlayer.hand[0].match(/\d+/)[0]);
+        if (myVal > taVal) { eliminatePlayer(socket.roomName, targetId); io.to(socket.roomName).emit('gameLog', `⚔️ 대결 승리! [${targetPlayer.name}] 탈락!`); }
+        else if (myVal < taVal) { eliminatePlayer(socket.roomName, socket.id); io.to(socket.roomName).emit('gameLog', `⚔️ 대결 패배! [${attacker.name}] 탈락!`); }
+        else { io.to(socket.roomName).emit('gameLog', `⚔️ 무승부!`); }
+      } else if (cardName.includes("의녀")) {
+        attacker.isProtected = true;
+        io.to(socket.roomName).emit('gameLog', `💊 [${attacker.name}]님이 보호받습니다.`);
+      } else if (cardName.includes("자객") && targetPlayer) {
+        const disc = targetPlayer.hand.pop();
+        room.discardedCards.push(disc);
+        io.to(socket.roomName).emit('gameLog', `🗡️ [${targetPlayer.name}]님이 [${disc}]를 버렸습니다.`);
+        if (disc.includes("왕비")) {
+          eliminatePlayer(socket.roomName, targetId);
+        } else {
+          const next = drawCard(room);
+          if (next) { targetPlayer.hand.push(next); io.to(targetId).emit('updateHand', targetPlayer.hand); }
         }
+      } else if (cardName.includes("임금") && targetPlayer) {
+        const myCard = attacker.hand.pop();
+        const taCard = targetPlayer.hand.pop();
+        attacker.hand.push(taCard); targetPlayer.hand.push(myCard);
+        io.to(socket.id).emit('updateHand', attacker.hand);
+        io.to(targetId).emit('updateHand', targetPlayer.hand);
+        io.to(socket.roomName).emit('gameLog', `👑 패 교환 완료!`);
+      } else if (cardName.includes("왕비")) {
+        eliminatePlayer(socket.roomName, socket.id);
+      }
+    }
 
-        function requestStart() { socket.emit('requestStart'); }
+    sendCardStats(socket.roomName);
+    if (!checkWinCondition(socket.roomName)) {
+        if (room.deck.length === 0) determineWinnerByScore(socket.roomName);
+        else nextTurn(socket.roomName);
+    }
+  });
 
-        socket.on('updateHand', (hand) => {
-            myHand = hand;
-            updateHandUI();
-        });
+  socket.on('disconnect', () => {
+    const room = rooms[socket.roomName];
+    if (room) {
+      delete room.players[socket.id];
+      room.playerOrder = room.playerOrder.filter(id => id !== socket.id);
+      if (room.playerOrder.length === 0) delete rooms[socket.roomName];
+      else broadcastRoomInfo(socket.roomName);
+    }
+  });
+});
 
-        function updateHandUI() {
-            for(let i=0; i<2; i++) {
-                const el = document.getElementById('card' + i);
-                if(myHand[i]) {
-                    const num = myHand[i].match(/\d+/)[0];
-                    el.innerHTML = `<div class="card-name">${cardInfo[num].emoji}${cardInfo[num].name}(${num})</div><div class="card-desc">${cardInfo[num].desc}</div>`;
-                    el.classList.remove('disabled');
-                    if(isMyTurn) el.classList.add('active');
-                    else el.classList.remove('active');
-                } else {
-                    el.innerHTML = "패 없음";
-                    el.classList.add('disabled');
-                    el.classList.remove('active');
-                }
-            }
-        }
+function startGame(roomName) {
+  const room = rooms[roomName];
+  room.isGameStarted = true;
+  room.deck = [...deckMaster].sort(() => Math.random() - 0.5);
+  room.deck.pop();
+  room.discardedCards = [];
+  room.playerOrder.forEach(id => {
+    room.players[id].hand = [drawCard(room)];
+    room.players[id].isEliminated = false;
+    room.players[id].isProtected = false;
+    io.to(id).emit('updateHand', room.players[id].hand);
+  });
+  room.turnIndex = 0;
+  sendCardStats(roomName); 
+  nextTurn(roomName, true);
+  broadcastRoomInfo(roomName);
+}
 
-        socket.on('roomInfo', (data) => {
-            players = data.playerStates;
-            document.getElementById('player-count').innerText = data.count;
-            const btn = document.getElementById('start-btn');
-            if(data.count >= 2 && !data.isStarted) btn.style.display = 'block';
-            else btn.style.display = 'none';
-            document.getElementById('player-names-box').innerHTML = data.playerStates.map(p => `<span style="${p.isEliminated ? 'text-decoration:line-through;color:red;' : ''}">${p.name}</span>`).join(" | ");
-        });
+function nextTurn(roomName, isFirst = false) {
+  const room = rooms[roomName];
+  if (!isFirst) {
+    do { room.turnIndex = (room.turnIndex + 1) % room.playerOrder.length; } 
+    while (room.players[room.playerOrder[room.turnIndex]].isEliminated);
+  }
+  const id = room.playerOrder[room.turnIndex];
+  room.players[id].isProtected = false;
+  const card = drawCard(room);
+  if (card) {
+    room.players[id].hand.push(card);
+    io.to(id).emit('updateHand', room.players[id].hand);
+    // 턴 교대 시 해당 플레이어의 ID와 이름을 모두 보냄
+    io.to(roomName).emit('turnUpdate', { turnName: room.players[id].name, turnId: id });
+  }
+}
 
-        socket.on('gameOver', () => {
-            const btn = document.getElementById('start-btn');
-            btn.style.display = 'block';
-            btn.innerText = "🔄 한 판 더!";
-            isMyTurn = false;
-        });
+function determineWinnerByScore(roomName) {
+  const room = rooms[roomName];
+  let survivors = room.playerOrder.filter(id => !room.players[id].isEliminated)
+    .map(id => ({ id, name: room.players[id].name, score: room.players[id].hand[0] ? parseInt(room.players[id].hand[0].match(/\d+/)[0]) : 0 }));
+  survivors.sort((a, b) => b.score - a.score);
+  io.to(roomName).emit('gameLog', `🎴 덱 소진! 패를 공개합니다.`);
+  survivors.forEach(p => { io.to(roomName).emit('gameLog', `📜 [${p.name}]: ${p.score}점`); });
+  endGame(roomName, survivors[0].id);
+}
 
-        socket.on('turnUpdate', (data) => {
-            // 소켓 고유 ID를 비교하거나 이름을 비교하여 내 차례인지 확정
-            isMyTurn = (data.turnId === socket.id);
-            document.getElementById('turn-info').innerText = isMyTurn ? "🔴 당신의 차례!" : `⌛ ${data.turnName}의 차례...`;
-            updateHandUI(); // 차례가 오면 카드 UI를 갱신(active 클래스 등)
-        });
+function checkWinCondition(roomName) {
+  const survivors = rooms[roomName].playerOrder.filter(id => !rooms[roomName].players[id].isEliminated);
+  if (survivors.length === 1) { endGame(roomName, survivors[0]); return true; }
+  return false;
+}
 
-        socket.on('gameLog', (msg) => {
-            const log = document.getElementById('game-log');
-            log.innerHTML += `<div>${msg}</div>`;
-            log.scrollTop = log.scrollHeight;
-        });
+function eliminatePlayer(roomName, id) {
+  const room = rooms[roomName];
+  room.players[id].isEliminated = true;
+  if (room.players[id].hand.length > 0) room.discardedCards.push(room.players[id].hand[0]);
+  room.players[id].hand = [];
+  io.to(id).emit('updateHand', []);
+  broadcastRoomInfo(roomName);
+}
 
-        socket.on('privateNotice', (msg) => showNotice(msg));
+function endGame(roomName, id) {
+  rooms[roomName].isGameStarted = false;
+  io.to(roomName).emit('gameLog', `🏆 최종 승리자: [${rooms[roomName].players[id].name}]`);
+  io.to(roomName).emit('gameOver');
+  broadcastRoomInfo(roomName);
+}
 
-        // 카드 클릭 함수
-        function clickCard(idx) {
-            console.log("카드 클릭 시도:", idx, "차례여부:", isMyTurn); // 디버깅용
-            if(!isMyTurn || !myHand[idx]) return;
+function drawCard(room) { return room.deck.pop(); }
+function sendCardStats(roomName) {
+  const room = rooms[roomName];
+  let currentCounts = {};
+  room.discardedCards.forEach(card => { let val = card.match(/\d+/)[0]; currentCounts[val] = (currentCounts[val] || 0) + 1; });
+  let stats = [];
+  const cardNames = { "1":"포졸", "2":"광대", "3":"검객", "4":"의녀", "5":"자객", "6":"임금", "7":"후궁", "8":"왕비" };
+  const emojies = { "1":"👮‍♂️", "2":"🎭", "3":"⚔️", "4":"💊", "5":"🗡️", "6":"👑", "7":"🌺", "8":"👸" };
+  for (let i = 1; i <= 8; i++) {
+    let key = i.toString();
+    let rem = cardTotalCounts[key] - (currentCounts[key] || 0);
+    stats.push({ num: key, name: cardNames[key], emoji: emojies[key], remaining: rem, total: cardTotalCounts[key] });
+  }
+  io.to(roomName).emit('updateCardStats', { stats, deckCount: room.deck.length });
+}
 
-            selectedCard = myHand[idx];
-            
-            // 후궁 제약
-            if((selectedCard.includes("자객") || selectedCard.includes("임금")) && myHand.some(c => c.includes("후궁"))) {
-                return showNotice("후궁을 먼저 버려야 하오!");
-            }
-            
-            const targets = ["포졸", "광대", "검객", "자객", "임금"];
-            if(targets.some(t => selectedCard.includes(t))) {
-                const container = document.getElementById('target-buttons');
-                container.innerHTML = "";
-                players.forEach(p => {
-                    const myInfo = players.find(player => player.name === document.getElementById('nickname').value);
-                    if(!p.isEliminated && p.name !== document.getElementById('nickname').value) {
-                        const btn = document.createElement('button');
-                        btn.className = "overlay-btn";
-                        btn.innerText = p.name;
-                        btn.onclick = () => { selectTarget(p.name); };
-                        container.appendChild(btn);
-                    }
-                });
-                if(container.innerHTML === "") selectTarget(document.getElementById('nickname').value); 
-                else document.getElementById('target-overlay').style.display = 'flex';
-            } else {
-                selectedTarget = "";
-                submitPlay();
-            }
-        }
+function broadcastRoomInfo(roomName) {
+  const room = rooms[roomName];
+  const playerStates = room.playerOrder.map(id => ({ name: room.players[id].name, isEliminated: room.players[id].isEliminated }));
+  io.to(roomName).emit('roomInfo', { count: room.playerOrder.length, playerStates, isStarted: room.isGameStarted });
+}
 
-        function selectTarget(name) {
-            selectedTarget = name;
-            document.getElementById('target-overlay').style.display = 'none';
-            if(selectedCard.includes("포졸") && selectedTarget !== document.getElementById('nickname').value) {
-                document.getElementById('guess-overlay').style.display = 'flex';
-            } else {
-                submitPlay();
-            }
-        }
-
-        function submitPlay(guess = "") {
-            socket.emit('playCard', { card: selectedCard, target: selectedTarget, guess: guess });
-            isMyTurn = false; // 내고 나면 즉시 내 차례 아님으로 설정
-            closeOverlay();
-            updateHandUI();
-        }
-
-        function closeOverlay() {
-            document.getElementById('target-overlay').style.display = 'none';
-            document.getElementById('guess-overlay').style.display = 'none';
-        }
-
-        socket.on('updateCardStats', (data) => {
-            const { stats, deckCount } = data;
-            document.getElementById('deck-status').innerText = `📋 남은 덱: ${deckCount}장 (클릭 시 능력 확인)`;
-            document.getElementById('mini-card-container').innerHTML = stats.map(s => {
-                const isSoldOut = s.remaining === 0 ? "sold-out" : "";
-                return `
-                <div class="mini-card ${isSoldOut}" onclick="showNotice('${s.emoji}${s.name}: ${cardInfo[s.num].desc}')">
-                    <b>${s.emoji}</b>
-                    <span>${s.name} (${s.num})</span>
-                    <div style="font-size:9px;color:#aaa;">${s.remaining}/${s.total}</div>
-                </div>`;
-            }).join("");
-        });
-    </script>
-</body>
-</html>
+server.listen(process.env.PORT || 10000);
