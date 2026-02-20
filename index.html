@@ -24,16 +24,15 @@
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         .overlay-btn { padding: 15px; margin: 5px; width: 85%; max-width: 250px; background: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; font-size: 18px; }
         
-        /* 한 판 더 버튼 디자인 보완 */
         #retry-btn { 
             display: none; 
-            background: #ffeb3b; /* 노란색 배경 */
-            color: #000; /* 검정 텍스트 */
+            background: #ffeb3b; 
+            color: #000; 
             border: 3px solid #fbc02d; 
             border-radius: 8px; 
-            padding: 12px 25px; 
-            font-size: 26.4px; /* 기존보다 20% 확대 (22 * 1.2) */
-            font-weight: 900; /* 볼드 강조 */
+            padding: 10px 20px; 
+            font-size: 23.7px; /* 이전 크기에서 10% 축소 */
+            font-weight: 900; 
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(255, 235, 59, 0.4);
             margin-top: 5px;
@@ -98,7 +97,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let myName = "", myHand = [], isMyTurn = false, selectedCard = "", players = [], selectedTarget = "";
+        let myName = "", myHand = [], isMyTurn = false, isEliminated = false, selectedCard = "", players = [], selectedTarget = "";
         
         const cardInfo = {
             "1": { emoji: "👮‍♂️", name: "포졸", desc: "상대의 숫자를 맞추면 탈락시킴 (1 제외)" },
@@ -148,15 +147,24 @@
         socket.on('roomInfo', (data) => {
             players = data.playerStates;
             document.getElementById('player-count').innerText = data.count;
+            
+            // 내 탈락 여부 실시간 확인
+            const me = data.playerStates.find(p => p.name === myName);
+            if (me) isEliminated = me.isEliminated;
+
             const sBtn = document.getElementById('start-btn');
             const rBtn = document.getElementById('retry-btn');
             if(data.count >= 2 && !data.isStarted) {
-                // 게임이 아직 안 끝났거나 새로 입장한 경우
                 if(rBtn.style.display !== 'block') sBtn.style.display = 'block';
             } else {
                 sBtn.style.display = 'none';
             }
             document.getElementById('player-names-box').innerHTML = data.playerStates.map(p => `<span style="${p.isEliminated ? 'text-decoration:line-through;color:red;' : ''}">${p.name}</span>`).join(" | ");
+            
+            // 탈락자 화면 갱신을 위해 턴 안내 다시 체크
+            if(isEliminated && data.isStarted) {
+                document.getElementById('turn-info').innerHTML = `<span style="color:#ff5252;">💀 ${myName} 패배! (관전 중...)</span>`;
+            }
         });
 
         socket.on('gameOver', (data) => {
@@ -170,7 +178,13 @@
         socket.on('turnUpdate', (data) => {
             document.getElementById('retry-btn').style.display = 'none';
             isMyTurn = (data.turnId === socket.id);
-            document.getElementById('turn-info').innerText = isMyTurn ? "🔴 당신의 차례!" : `⌛ ${data.turnName}의 차례...`;
+            
+            // 탈락하지 않은 경우에만 차례 안내 표시
+            if(!isEliminated) {
+                document.getElementById('turn-info').innerText = isMyTurn ? "🔴 당신의 차례!" : `⌛ ${data.turnName}의 차례...`;
+            } else {
+                document.getElementById('turn-info').innerHTML = `<span style="color:#ff5252;">💀 ${myName} 패배! (관전 중...)</span>`;
+            }
             updateHandUI();
         });
 
