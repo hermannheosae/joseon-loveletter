@@ -24,14 +24,15 @@
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         .overlay-btn { padding: 15px; margin: 5px; width: 85%; max-width: 250px; background: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; font-size: 18px; }
         
+        /* 한 판 더 버튼 크기 20% 추가 축소 */
         #retry-btn { 
             display: none; 
             background: #ffeb3b; 
             color: #000; 
             border: 3px solid #fbc02d; 
             border-radius: 8px; 
-            padding: 10px 20px; 
-            font-size: 23.7px; 
+            padding: 8px 16px; 
+            font-size: 19px; /* 23.7px에서 약 20% 축소 */
             font-weight: 900; 
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(255, 235, 59, 0.4);
@@ -112,6 +113,7 @@
 
         function showNotice(msg) { document.getElementById('notice-msg').innerText = msg; document.getElementById('notice-overlay').style.display = 'flex'; }
         function closeNotice() { document.getElementById('notice-overlay').style.display = 'none'; }
+        
         function joinGame() {
             myName = document.getElementById('nickname').value;
             if(!myName) return showNotice("이름을 입력하시오!");
@@ -125,6 +127,21 @@
             document.getElementById('retry-btn').style.display = 'none';
             socket.emit('requestStart');
         }
+
+        // 새로운 게임 시작 시 알림 처리
+        socket.on('gameStartedNotice', () => {
+            isEliminated = false; // 탈락 상태 초기화
+            const turnInfo = document.getElementById('turn-info');
+            turnInfo.style.color = "#4CAF50"; // 초록색 강조
+            turnInfo.innerText = "✨ 새로운 게임이 시작되었습니다!";
+            
+            // 3초 후 기본 안내로 변경되거나 턴 업데이트에 의해 덮어씌워짐
+            setTimeout(() => {
+                if (turnInfo.innerText === "✨ 새로운 게임이 시작되었습니다!") {
+                    turnInfo.style.color = "#e6b322";
+                }
+            }, 3000);
+        });
 
         socket.on('updateHand', (hand) => {
             myHand = hand;
@@ -160,7 +177,8 @@
             }
             document.getElementById('player-names-box').innerHTML = data.playerStates.map(p => `<span style="${p.isEliminated ? 'text-decoration:line-through;color:red;' : ''}">${p.name}</span>`).join(" | ");
             
-            if(isEliminated && data.isStarted) {
+            // 게임 중이고 탈락한 경우에만 패배 메시지 표시 (시작 안내 멘트가 우선순위 높음)
+            if(isEliminated && data.isStarted && document.getElementById('turn-info').innerText.indexOf("✨") === -1) {
                 document.getElementById('turn-info').innerHTML = `<span style="color:#ff5252;">💀 ${myName} 패배! (관전 중...)</span>`;
             }
         });
@@ -176,11 +194,13 @@
         socket.on('turnUpdate', (data) => {
             document.getElementById('retry-btn').style.display = 'none';
             isMyTurn = (data.turnId === socket.id);
+            const turnInfo = document.getElementById('turn-info');
             
             if(!isEliminated) {
-                document.getElementById('turn-info').innerText = isMyTurn ? "🔴 당신의 차례!" : `⌛ ${data.turnName}의 차례...`;
+                turnInfo.style.color = "#e6b322";
+                turnInfo.innerText = isMyTurn ? "🔴 당신의 차례!" : `⌛ ${data.turnName}의 차례...`;
             } else {
-                document.getElementById('turn-info').innerHTML = `<span style="color:#ff5252;">💀 ${myName} 패배! (관전 중...)</span>`;
+                turnInfo.innerHTML = `<span style="color:#ff5252;">💀 ${myName} 패배! (관전 중...)</span>`;
             }
             updateHandUI();
         });
@@ -231,14 +251,11 @@
 
         socket.on('updateCardStats', (data) => {
             const { stats, deckCount } = data;
-            
             document.getElementById('deck-status').innerText = `현재까지 공개된 카드 (남은 덱: ${deckCount}장)`;
-            
             document.getElementById('mini-card-container').innerHTML = stats.map(s => {
                 const isAllOut = s.discarded === s.total;
                 const cardClass = isAllOut ? "mini-card sold-out" : "mini-card";
                 const countColor = isAllOut ? "#ff5252" : "#aaa";
-                
                 return `
                     <div class="${cardClass}" onclick="showNotice('${s.emoji}${s.name}: ${cardInfo[s.num].desc}')">
                         <b>${s.emoji}</b>
