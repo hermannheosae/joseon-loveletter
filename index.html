@@ -18,9 +18,14 @@
         .card.disabled { opacity: 0.5; filter: grayscale(1); }
         #mini-card-area { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px 8px; margin-top: auto; border: 1px solid #5c5042; }
         .mini-card-wrap { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-        .mini-card { width: 22%; height: 55px; background: #5c5042; color: #e0d0b8; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; border: 1px solid #3d342b; }
-        /* 미니카드 품절 시 색상 */
-        .mini-card.sold-out { background: #1a1a1a; color: #555; border-color: #000; opacity: 0.6; }
+        
+        /* 미니카드 디자인 보완 */
+        .mini-card { width: 22%; height: 75px; background: #5c5042; color: #e0d0b8; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border: 1px solid #3d342b; }
+        .mini-card b { font-size: 14px; margin-top: 2px; }
+        .mini-card span { font-size: 10px; margin: 3px 0; }
+        .mini-card .count-txt { font-size: 9px; color: #aaa; }
+        .mini-card.sold-out { background: #1a1a1a; color: #555; opacity: 0.6; }
+
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         .overlay-btn { padding: 15px; margin: 5px; width: 85%; max-width: 250px; background: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; font-size: 18px; }
         #notice-box { background: #f5f0e1; color: #2e2b26; padding: 25px; border-radius: 10px; width: 80%; max-width: 300px; border: 5px solid #a63737; }
@@ -35,20 +40,20 @@
 
     <div id="game-screen">
         <div id="top-bar">
-            <div style="display: flex; justify-content: space-between;">
-                <span id="room-info-display">대기실 (<span id="player-count">0</span>/4)</span>
-                <button id="start-btn" onclick="requestStart()" style="display:none; background:#3e6b46; color:white; border:none; border-radius:5px; padding:5px 10px;">▶ 시작</button>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="room-info-display" style="font-size: 14px;">인원: <span id="player-count">0</span>/4</span>
+                <button id="start-btn" onclick="requestStart()" style="display:none; background:#3e6b46; color:white; border:none; border-radius:5px; padding:8px 15px; font-weight:bold; cursor:pointer;">▶ 시작하기</button>
             </div>
             <div id="player-names-box" style="font-size:12px; margin-top:5px; text-align:left; color:#9c8e7e;"></div>
         </div>
         <div id="game-log"></div>
-        <div id="turn-info" style="color:#e6b322; font-weight:bold; margin-bottom:5px;">입장 완료</div>
+        <div id="turn-info" style="color:#e6b322; font-weight:bold; margin: 5px 0;">입장 완료</div>
         <div id="hand-container">
             <div class="card disabled" id="card0" onclick="clickCard(0)"></div>
             <div class="card disabled" id="card1" onclick="clickCard(1)"></div>
         </div>
         <div id="mini-card-area">
-            <div style="font-size:11px; color:#e6b322; margin-bottom:5px;">📋 남은 카드 (클릭 시 능력 확인)</div>
+            <div style="font-size:11px; color:#e6b322; margin-bottom:8px;">📋 남은 카드 (클릭 시 능력 확인)</div>
             <div id="mini-card-container" class="mini-card-wrap"></div>
         </div>
     </div>
@@ -93,6 +98,7 @@
 
         function showNotice(msg) { document.getElementById('notice-msg').innerText = msg; document.getElementById('notice-overlay').style.display = 'flex'; }
         function closeNotice() { document.getElementById('notice-overlay').style.display = 'none'; }
+        
         function joinGame() {
             myName = document.getElementById('nickname').value;
             if(!myName) return showNotice("이름을 입력하시오!");
@@ -100,7 +106,12 @@
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
         }
-        function requestStart() { socket.emit('requestStart'); }
+
+        function requestStart() {
+            const btn = document.getElementById('start-btn');
+            btn.style.display = 'none'; // 클릭 시 숨김
+            socket.emit('requestStart');
+        }
 
         socket.on('updateHand', (hand) => {
             myHand = hand;
@@ -117,8 +128,21 @@
         socket.on('roomInfo', (data) => {
             players = data.playerStates;
             document.getElementById('player-count').innerText = data.count;
-            document.getElementById('start-btn').style.display = (data.count >= 2 && !data.isStarted) ? 'block' : 'none';
+            const btn = document.getElementById('start-btn');
+            if(data.count >= 2 && !data.isStarted) {
+                btn.style.display = 'block';
+                btn.innerText = "▶ 시작하기";
+            } else if (data.isStarted) {
+                btn.style.display = 'none';
+            }
             document.getElementById('player-names-box').innerHTML = data.playerStates.map(p => `<span style="${p.isEliminated ? 'text-decoration:line-through;color:red;' : ''}">${p.name}</span>`).join(" | ");
+        });
+
+        socket.on('gameOver', () => {
+            const btn = document.getElementById('start-btn');
+            btn.style.display = 'block';
+            btn.style.background = '#e6b322';
+            btn.innerText = "🔄 한 판 더!";
         });
 
         socket.on('turnUpdate', (data) => {
@@ -169,7 +193,9 @@
                 const isSoldOut = s.remaining === 0 ? "sold-out" : "";
                 return `
                 <div class="mini-card ${isSoldOut}" onclick="showNotice('${s.emoji}${s.name}: ${cardInfo[s.num].desc}')">
-                    <b>${s.emoji}${s.num}</b><span>${s.remaining}/${s.total}</span>
+                    <b>${s.emoji}</b>
+                    <span>${s.name} (${s.num})</span>
+                    <div class="count-txt">남은카드 ${s.remaining}/${s.total}</div>
                 </div>`;
             }).join("");
         });
