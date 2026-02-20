@@ -48,13 +48,11 @@ io.on('connection', (socket) => {
     const targetId = Object.keys(room.players).find(id => room.players[id].name === data.target);
     const targetPlayer = targetId ? room.players[targetId] : null;
 
-    // 카드 제거
     const idx = attacker.hand.indexOf(cardName);
     if (idx > -1) attacker.hand.splice(idx, 1);
     room.discardedCards.push(cardName);
     socket.emit('updateHand', attacker.hand);
 
-    // 효과 처리
     if (targetPlayer && targetPlayer.isProtected && targetId !== socket.id) {
       io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 의녀의 치료 중이라 무효!`);
     } else {
@@ -123,6 +121,10 @@ function startGame(roomName) {
     io.to(id).emit('updateHand', room.players[id].hand);
   });
   room.turnIndex = 0;
+  
+  // 시작하자마자 카드 통계 전송
+  sendCardStats(roomName); 
+  
   nextTurn(roomName, true);
   broadcastRoomInfo(roomName);
 }
