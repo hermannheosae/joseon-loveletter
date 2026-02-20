@@ -19,6 +19,8 @@
         #mini-card-area { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px 8px; margin-top: auto; border: 1px solid #5c5042; }
         .mini-card-wrap { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
         .mini-card { width: 22%; height: 55px; background: #5c5042; color: #e0d0b8; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; border: 1px solid #3d342b; }
+        /* 미니카드 품절 시 색상 */
+        .mini-card.sold-out { background: #1a1a1a; color: #555; border-color: #000; opacity: 0.6; }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         .overlay-btn { padding: 15px; margin: 5px; width: 85%; max-width: 250px; background: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; font-size: 18px; }
         #notice-box { background: #f5f0e1; color: #2e2b26; padding: 25px; border-radius: 10px; width: 80%; max-width: 300px; border: 5px solid #a63737; }
@@ -60,10 +62,13 @@
     <div id="guess-overlay" class="overlay">
         <h2 style="color: #f0e6d2;">상대의 패는?</h2>
         <div id="guess-buttons" style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; width:85%;">
-            <button class="overlay-btn" onclick="submitPlay('2')">2</button><button class="overlay-btn" onclick="submitPlay('3')">3</button>
-            <button class="overlay-btn" onclick="submitPlay('4')">4</button><button class="overlay-btn" onclick="submitPlay('5')">5</button>
-            <button class="overlay-btn" onclick="submitPlay('6')">6</button><button class="overlay-btn" onclick="submitPlay('7')">7</button>
-            <button class="overlay-btn" onclick="submitPlay('8')">8</button>
+            <button class="overlay-btn" onclick="submitPlay('2')">🎭광대(2)</button>
+            <button class="overlay-btn" onclick="submitPlay('3')">⚔️검객(3)</button>
+            <button class="overlay-btn" onclick="submitPlay('4')">💊의녀(4)</button>
+            <button class="overlay-btn" onclick="submitPlay('5')">🗡️자객(5)</button>
+            <button class="overlay-btn" onclick="submitPlay('6')">👑임금(6)</button>
+            <button class="overlay-btn" onclick="submitPlay('7')">🌺후궁(7)</button>
+            <button class="overlay-btn" onclick="submitPlay('8')">👸왕비(8)</button>
         </div>
     </div>
 
@@ -82,7 +87,7 @@
             "4": { emoji: "💊", name: "의녀", desc: "한 턴 동안 모든 공격을 막습니다." },
             "5": { emoji: "🗡️", name: "자객", desc: "상대가 패를 버리고 새로 뽑게 합니다." },
             "6": { emoji: "👑", name: "임금", desc: "상대와 패를 서로 교환합니다." },
-            "7": { emoji: "🌺", name: "후궁", desc: "임금/자객과 함께 있으면 무조건 버림" },
+            "7": { emoji: "🌺", name: "후궁", desc: "임금(6)이나 자객(5)과 함께 있으면 무조건 버림" },
             "8": { emoji: "👸", name: "왕비", desc: "버려지면 즉시 탈락합니다." }
         };
 
@@ -160,10 +165,13 @@
         function closeOverlay() { document.querySelectorAll('.overlay').forEach(o => { if(o.id !== 'notice-overlay') o.style.display = 'none'; }); }
 
         socket.on('updateCardStats', (stats) => {
-            document.getElementById('mini-card-container').innerHTML = stats.map(s => `
-                <div class="mini-card" onclick="showNotice('${s.emoji}${s.name}: ${cardInfo[s.num].desc}')">
+            document.getElementById('mini-card-container').innerHTML = stats.map(s => {
+                const isSoldOut = s.remaining === 0 ? "sold-out" : "";
+                return `
+                <div class="mini-card ${isSoldOut}" onclick="showNotice('${s.emoji}${s.name}: ${cardInfo[s.num].desc}')">
                     <b>${s.emoji}${s.num}</b><span>${s.remaining}/${s.total}</span>
-                </div>`).join("");
+                </div>`;
+            }).join("");
         });
     </script>
 </body>
