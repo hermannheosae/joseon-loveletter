@@ -54,7 +54,7 @@ io.on('connection', (socket) => {
     socket.emit('updateHand', attacker.hand);
 
     if (targetPlayer && targetPlayer.isProtected && targetId !== socket.id) {
-      io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 보호 중이라 무효!`);
+      io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 보호 중이라 효과 무효!`);
     } else {
       if (cardName.includes("포졸") && targetPlayer) {
         if (targetPlayer.hand[0].includes(data.guess)) {
@@ -180,17 +180,30 @@ function endGame(roomName, id) {
 }
 
 function drawCard(room) { return room.deck.pop(); }
+
 function sendCardStats(roomName) {
   const room = rooms[roomName];
   let currentCounts = {};
-  room.discardedCards.forEach(card => { let val = card.match(/\d+/)[0]; currentCounts[val] = (currentCounts[val] || 0) + 1; });
+  
+  room.discardedCards.forEach(card => { 
+    let val = card.match(/\d+/)[0]; 
+    currentCounts[val] = (currentCounts[val] || 0) + 1; 
+  });
+
   let stats = [];
   const cardNames = { "1":"포졸", "2":"광대", "3":"검객", "4":"의녀", "5":"자객", "6":"임금", "7":"후궁", "8":"왕비" };
   const emojies = { "1":"👮‍♂️", "2":"🎭", "3":"⚔️", "4":"💊", "5":"🗡️", "6":"👑", "7":"🌺", "8":"👸" };
+
   for (let i = 1; i <= 8; i++) {
     let key = i.toString();
-    let rem = cardTotalCounts[key] - (currentCounts[key] || 0);
-    stats.push({ num: key, name: cardNames[key], emoji: emojies[key], remaining: rem, total: cardTotalCounts[key] });
+    let discarded = currentCounts[key] || 0;
+    stats.push({ 
+      num: key, 
+      name: cardNames[key], 
+      emoji: emojies[key], 
+      discarded: discarded, 
+      total: cardTotalCounts[key] 
+    });
   }
   io.to(roomName).emit('updateCardStats', { stats, deckCount: room.deck.length });
 }
