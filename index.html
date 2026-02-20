@@ -12,17 +12,21 @@
         #top-bar { display: flex; flex-direction: column; background: rgba(0,0,0,0.4); border-radius: 10px; margin-bottom: 5px; padding: 10px; border: 1px solid #5c5042; }
         #game-log { background: rgba(0,0,0,0.3); height: 18vh; overflow-y: auto; padding: 10px; border-radius: 10px; font-size: 14px; margin-bottom: 5px; text-align: left; border: 1px solid #5c5042; }
         #hand-container { display: flex; justify-content: center; gap: 10px; flex: 1; align-items: center; }
-        .card { background: #f5f0e1; color: #2e2b26; width: 150px; height: 230px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px solid #d4c5a9; cursor: pointer; text-align: center; padding: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.6); box-sizing: border-box; }
-        .card-name { font-size: 22px; margin-bottom: 8px; font-family: "Gungsuh", serif; font-weight: bold; }
-        .card-desc { font-size: 12px; line-height: 1.3; color: #333; }
-        .card.disabled { opacity: 0.5; filter: grayscale(1); }
+        
+        /* 카드 클릭 영역 방해 금지 설정 */
+        .card { background: #f5f0e1; color: #2e2b26; width: 150px; height: 230px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px solid #d4c5a9; cursor: pointer; text-align: center; padding: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.6); box-sizing: border-box; pointer-events: auto; }
+        .card-name { font-size: 22px; margin-bottom: 8px; font-family: "Gungsuh", serif; font-weight: bold; pointer-events: none; }
+        .card-desc { font-size: 12px; line-height: 1.3; color: #333; pointer-events: none; }
+        
+        /* 내 차례일 때 카드가 강조됨 */
+        .card.active { border-color: #a63737; transform: scale(1.05); }
+        .card.disabled { opacity: 0.5; filter: grayscale(1); cursor: default; pointer-events: none; }
+
         #mini-card-area { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px 8px; margin-top: auto; border: 1px solid #5c5042; }
         .mini-card-wrap { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
         .mini-card { width: 22%; height: 75px; background: #5c5042; color: #e0d0b8; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border: 1px solid #3d342b; }
-        .mini-card b { font-size: 14px; margin-top: 2px; }
-        .mini-card span { font-size: 10px; margin: 3px 0; }
-        .mini-card .count-txt { font-size: 9px; color: #aaa; }
         .mini-card.sold-out { background: #1a1a1a; color: #555; opacity: 0.6; }
+        
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         .overlay-btn { padding: 15px; margin: 5px; width: 85%; max-width: 250px; background: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; font-size: 18px; }
         #notice-box { background: #f5f0e1; color: #2e2b26; padding: 25px; border-radius: 10px; width: 80%; max-width: 300px; border: 5px solid #a63737; }
@@ -38,7 +42,7 @@
     <div id="game-screen">
         <div id="top-bar">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span id="room-info-display" style="font-size: 14px;">인원: <span id="player-count">0</span>/4</span>
+                <span style="font-size: 14px;">인원: <span id="player-count">0</span>/4</span>
                 <button id="start-btn" onclick="requestStart()" style="display:none; background:#3e6b46; color:white; border:none; border-radius:5px; padding:8px 15px; font-weight:bold;">▶ 시작하기</button>
             </div>
             <div id="player-names-box" style="font-size:12px; margin-top:5px; text-align:left; color:#9c8e7e;"></div>
@@ -81,7 +85,8 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let myName = "", myHand = [], isMyTurn = false, selectedCard = "", players = [];
+        let myHand = [], isMyTurn = false, selectedCard = "", players = [], selectedTarget = "";
+        
         const cardInfo = {
             "1": { emoji: "👮‍♂️", name: "포졸", desc: "상대의 숫자를 맞추면 탈락시킴 (1 제외)" },
             "2": { emoji: "🎭", name: "광대", desc: "상대의 패를 나만 몰래 봅니다." },
@@ -97,53 +102,58 @@
         function closeNotice() { document.getElementById('notice-overlay').style.display = 'none'; }
         
         function joinGame() {
-            myName = document.getElementById('nickname').value;
-            if(!myName) return showNotice("이름을 입력하시오!");
-            socket.emit('login', { name: myName });
+            const nick = document.getElementById('nickname').value;
+            if(!nick) return showNotice("이름을 입력하시오!");
+            socket.emit('login', { name: nick });
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
         }
 
-        function requestStart() {
-            document.getElementById('start-btn').style.display = 'none';
-            socket.emit('requestStart');
-        }
+        function requestStart() { socket.emit('requestStart'); }
 
         socket.on('updateHand', (hand) => {
             myHand = hand;
+            updateHandUI();
+        });
+
+        function updateHandUI() {
             for(let i=0; i<2; i++) {
                 const el = document.getElementById('card' + i);
                 if(myHand[i]) {
                     const num = myHand[i].match(/\d+/)[0];
                     el.innerHTML = `<div class="card-name">${cardInfo[num].emoji}${cardInfo[num].name}(${num})</div><div class="card-desc">${cardInfo[num].desc}</div>`;
                     el.classList.remove('disabled');
-                } else { el.innerHTML = "패 없음"; el.classList.add('disabled'); }
+                    if(isMyTurn) el.classList.add('active');
+                    else el.classList.remove('active');
+                } else {
+                    el.innerHTML = "패 없음";
+                    el.classList.add('disabled');
+                    el.classList.remove('active');
+                }
             }
-        });
+        }
 
         socket.on('roomInfo', (data) => {
             players = data.playerStates;
             document.getElementById('player-count').innerText = data.count;
             const btn = document.getElementById('start-btn');
-            if(data.count >= 2 && !data.isStarted) {
-                btn.style.display = 'block';
-                btn.innerText = "▶ 시작하기";
-            } else if (data.isStarted) {
-                btn.style.display = 'none';
-            }
+            if(data.count >= 2 && !data.isStarted) btn.style.display = 'block';
+            else btn.style.display = 'none';
             document.getElementById('player-names-box').innerHTML = data.playerStates.map(p => `<span style="${p.isEliminated ? 'text-decoration:line-through;color:red;' : ''}">${p.name}</span>`).join(" | ");
         });
 
         socket.on('gameOver', () => {
             const btn = document.getElementById('start-btn');
             btn.style.display = 'block';
-            btn.style.background = '#e6b322';
             btn.innerText = "🔄 한 판 더!";
+            isMyTurn = false;
         });
 
         socket.on('turnUpdate', (data) => {
-            isMyTurn = (data.turnName === myName);
+            // 소켓 고유 ID를 비교하거나 이름을 비교하여 내 차례인지 확정
+            isMyTurn = (data.turnId === socket.id);
             document.getElementById('turn-info').innerText = isMyTurn ? "🔴 당신의 차례!" : `⌛ ${data.turnName}의 차례...`;
+            updateHandUI(); // 차례가 오면 카드 UI를 갱신(active 클래스 등)
         });
 
         socket.on('gameLog', (msg) => {
@@ -154,34 +164,61 @@
 
         socket.on('privateNotice', (msg) => showNotice(msg));
 
+        // 카드 클릭 함수
         function clickCard(idx) {
+            console.log("카드 클릭 시도:", idx, "차례여부:", isMyTurn); // 디버깅용
             if(!isMyTurn || !myHand[idx]) return;
+
             selectedCard = myHand[idx];
-            if((selectedCard.includes("자객") || selectedCard.includes("임금")) && myHand.some(c => c.includes("후궁"))) return showNotice("후궁을 먼저 버려야 하오!");
+            
+            // 후궁 제약
+            if((selectedCard.includes("자객") || selectedCard.includes("임금")) && myHand.some(c => c.includes("후궁"))) {
+                return showNotice("후궁을 먼저 버려야 하오!");
+            }
+            
             const targets = ["포졸", "광대", "검객", "자객", "임금"];
             if(targets.some(t => selectedCard.includes(t))) {
                 const container = document.getElementById('target-buttons');
                 container.innerHTML = "";
                 players.forEach(p => {
-                    if(!p.isEliminated && p.name !== myName) {
-                        const btn = document.createElement('button'); btn.className = "overlay-btn"; btn.innerText = p.name;
-                        btn.onclick = () => selectTarget(p.name); container.appendChild(btn);
+                    const myInfo = players.find(player => player.name === document.getElementById('nickname').value);
+                    if(!p.isEliminated && p.name !== document.getElementById('nickname').value) {
+                        const btn = document.createElement('button');
+                        btn.className = "overlay-btn";
+                        btn.innerText = p.name;
+                        btn.onclick = () => { selectTarget(p.name); };
+                        container.appendChild(btn);
                     }
                 });
-                if(container.innerHTML === "") selectTarget(myName); 
+                if(container.innerHTML === "") selectTarget(document.getElementById('nickname').value); 
                 else document.getElementById('target-overlay').style.display = 'flex';
-            } else { submitPlay(); }
+            } else {
+                selectedTarget = "";
+                submitPlay();
+            }
         }
 
         function selectTarget(name) {
             selectedTarget = name;
             document.getElementById('target-overlay').style.display = 'none';
-            if(selectedCard.includes("포졸") && selectedTarget !== myName) document.getElementById('guess-overlay').style.display = 'flex';
-            else submitPlay();
+            if(selectedCard.includes("포졸") && selectedTarget !== document.getElementById('nickname').value) {
+                document.getElementById('guess-overlay').style.display = 'flex';
+            } else {
+                submitPlay();
+            }
         }
 
-        function submitPlay(guess = "") { socket.emit('playCard', { card: selectedCard, target: selectedTarget, guess: guess }); closeOverlay(); }
-        function closeOverlay() { document.querySelectorAll('.overlay').forEach(o => { if(o.id !== 'notice-overlay') o.style.display = 'none'; }); }
+        function submitPlay(guess = "") {
+            socket.emit('playCard', { card: selectedCard, target: selectedTarget, guess: guess });
+            isMyTurn = false; // 내고 나면 즉시 내 차례 아님으로 설정
+            closeOverlay();
+            updateHandUI();
+        }
+
+        function closeOverlay() {
+            document.getElementById('target-overlay').style.display = 'none';
+            document.getElementById('guess-overlay').style.display = 'none';
+        }
 
         socket.on('updateCardStats', (data) => {
             const { stats, deckCount } = data;
@@ -192,7 +229,7 @@
                 <div class="mini-card ${isSoldOut}" onclick="showNotice('${s.emoji}${s.name}: ${cardInfo[s.num].desc}')">
                     <b>${s.emoji}</b>
                     <span>${s.name} (${s.num})</span>
-                    <div class="count-txt">남은카드 ${s.remaining}/${s.total}</div>
+                    <div style="font-size:9px;color:#aaa;">${s.remaining}/${s.total}</div>
                 </div>`;
             }).join("");
         });
