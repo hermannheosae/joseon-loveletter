@@ -66,13 +66,13 @@
     <div id="guess-overlay" class="overlay">
         <h2 style="color: #f0e6d2;">상대의 패는?</h2>
         <div id="guess-buttons" style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; width:85%;">
-            <button class="overlay-btn" onclick="submitPlay('2')">🎭광대(2)</button>
+            <button class="overlay-btn" onclick="submitPlay('2')">🔮무당(2)</button>
             <button class="overlay-btn" onclick="submitPlay('3')">⚔️검객(3)</button>
-            <button class="overlay-btn" onclick="submitPlay('4')">💊의녀(4)</button>
-            <button class="overlay-btn" onclick="submitPlay('5')">🗡️자객(5)</button>
+            <button class="overlay-btn" onclick="submitPlay('4')">🩺의녀(4)</button>
+            <button class="overlay-btn" onclick="submitPlay('5')">🤴세자(5)</button>
             <button class="overlay-btn" onclick="submitPlay('6')">👑임금(6)</button>
-            <button class="overlay-btn" onclick="submitPlay('7')">🌺후궁(7)</button>
-            <button class="overlay-btn" onclick="submitPlay('8')">👸왕비(8)</button>
+            <button class="overlay-btn" onclick="submitPlay('7')">🌸후궁(7)</button>
+            <button class="overlay-btn" onclick="submitPlay('8')">👸중전(8)</button>
         </div>
     </div>
 
@@ -85,15 +85,16 @@
         const socket = io();
         let myName = "", myHand = [], isMyTurn = false, isEliminated = false, selectedCard = "", players = [], selectedTarget = "";
         
+        // 업데이트된 카드 정보 데이터
         const cardInfo = {
-            "1": { emoji: "👮‍♂️", name: "포졸", desc: "상대의 숫자를 맞추면 탈락시킴 (1 제외)" },
-            "2": { emoji: "🎭", name: "광대", desc: "상대의 패를 나만 몰래 봅니다." },
-            "3": { emoji: "⚔️", name: "검객", desc: "패 비교 후 낮은 숫자가 탈락합니다." },
-            "4": { emoji: "💊", name: "의녀", desc: "한 턴 동안 모든 공격을 막습니다." },
-            "5": { emoji: "🗡️", name: "자객", desc: "상대가 패를 버리고 새로 뽑게 합니다." },
-            "6": { emoji: "👑", name: "임금", desc: "상대와 패를 서로 교환합니다." },
-            "7": { emoji: "🌺", name: "후궁", desc: "임금(6)이나 자객(5)과 함께 있으면 무조건 버림" },
-            "8": { emoji: "👸", name: "왕비", desc: "버려지면 즉시 탈락합니다." }
+            "1": { emoji: "👮‍♂️", name: "포졸", desc: "상대 1명을 지목하고 카드 종류를 맞힙니다. 맞히면 탈락(1 제외)" },
+            "2": { emoji: "🔮", name: "무당", desc: "상대 1명의 패를 확인합니다." },
+            "3": { emoji: "⚔️", name: "검객", desc: "상대 1명과 패를 비교합니다. 숫자가 낮은 사람은 탈락합니다." },
+            "4": { emoji: "🩺", name: "의녀", desc: "다음 자신의 턴까지 다른 카드의 효과를 받지 않습니다." },
+            "5": { emoji: "🤴", name: "세자", desc: "자신 또는 타인의 패를 버리게 하고 새 카드를 뽑게 합니다. (중전이면 탈락)" },
+            "6": { emoji: "👑", name: "임금", desc: "상대 1명과 패를 서로 교환합니다." },
+            "7": { emoji: "🌸", name: "후궁", desc: "세자(5) 또는 임금(6)을 함께 들고 있을 경우 반드시 버려야 합니다." },
+            "8": { emoji: "👸", name: "중전", desc: "이 카드를 버리면 즉시 탈락합니다." }
         };
 
         function showNotice(msg) { document.getElementById('notice-msg').innerText = msg; document.getElementById('notice-overlay').style.display = 'flex'; }
@@ -117,7 +118,7 @@
             const turnInfo = document.getElementById('turn-info');
             turnInfo.style.color = "#4CAF50";
             turnInfo.innerText = "✨ 새로운 게임이 시작되었습니다!";
-            setTimeout(() => { if (turnInfo.innerText === "✨ 새로운 게임이 시작되었습니다!") turnInfo.style.color = "#e6b322"; }, 3000);
+            setTimeout(() => { if (turnInfo.innerText.includes("새로운 게임")) turnInfo.style.color = "#e6b322"; }, 3000);
         });
 
         socket.on('updateHand', (hand) => {
@@ -148,7 +149,7 @@
             if(data.count >= 2 && !data.isStarted) { if(rBtn.style.display !== 'block') sBtn.style.display = 'block'; }
             else sBtn.style.display = 'none';
             document.getElementById('player-names-box').innerHTML = data.playerStates.map(p => `<span style="${p.isEliminated ? 'text-decoration:line-through;color:red;' : ''}">${p.name}</span>`).join(" | ");
-            if(isEliminated && data.isStarted && document.getElementById('turn-info').innerText.indexOf("✨") === -1) {
+            if(isEliminated && data.isStarted && !document.getElementById('turn-info').innerText.includes("✨")) {
                 document.getElementById('turn-info').innerHTML = `<span style="color:#ff5252;">💀 ${myName} 패배! (관전 중...)</span>`;
             }
         });
@@ -183,13 +184,16 @@
         function clickCard(idx) {
             if(!isMyTurn || !myHand[idx]) return;
             selectedCard = myHand[idx];
-            if((selectedCard.includes("자객") || selectedCard.includes("임금")) && myHand.some(c => c.includes("후궁"))) return showNotice("후궁을 먼저 버려야 하오!");
-            const targets = ["포졸", "광대", "검객", "자객", "임금"];
+            // 후궁 제약: 세자(5) 또는 임금(6) 체크
+            if((selectedCard.includes("세자") || selectedCard.includes("임금")) && myHand.some(c => c.includes("후궁"))) return showNotice("후궁을 먼저 버려야 하오!");
+            const targets = ["포졸", "무당", "검객", "세자", "임금"];
             if(targets.some(t => selectedCard.includes(t))) {
                 const container = document.getElementById('target-buttons');
                 container.innerHTML = "";
                 players.forEach(p => {
-                    if(!p.isEliminated && p.name !== myName) {
+                    // 세자(5)는 자신도 지목 가능하므로 조건 분기
+                    const isSeja = selectedCard.includes("세자");
+                    if(!p.isEliminated && (isSeja || p.name !== myName)) {
                         const btn = document.createElement('button'); btn.className = "overlay-btn"; btn.innerText = p.name;
                         btn.onclick = () => { selectTarget(p.name); };
                         container.appendChild(btn);
