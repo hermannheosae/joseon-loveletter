@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>조선시대 러브레터</title>
+    <title>중전탈출</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { text-align: center; font-family: 'Noto Sans KR', sans-serif; background-color: #2e2b26; color: #f0e6d2; margin: 0; padding: 0; overflow: hidden; }
         #login-screen { display: flex; flex-direction: column; justify-content: center; height: 100vh; align-items: center; }
         input { padding: 15px; font-size: 20px; border-radius: 5px; border: 2px solid #8c7b6c; background-color: #4a4036; color: white; text-align: center; margin-bottom: 20px; width: 80%; max-width: 300px; }
         .btn-custom { padding: 15px 30px; font-size: 22px; background-color: #a63737; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+        .btn-sub { background-color: #5c5042; font-size: 16px; padding: 10px 20px; margin-top: 15px; }
         #game-screen { display: none; max-width: 600px; margin: 0 auto; padding: 10px; height: 100vh; flex-direction: column; box-sizing: border-box; }
         #top-bar { display: flex; flex-direction: column; background: rgba(0,0,0,0.4); border-radius: 10px; margin-bottom: 5px; padding: 10px; border: 1px solid #5c5042; }
         #game-log { background: rgba(0,0,0,0.3); height: 18vh; overflow-y: auto; padding: 10px; border-radius: 10px; font-size: 14px; margin-bottom: 5px; text-align: left; border: 1px solid #5c5042; }
@@ -24,14 +25,16 @@
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         .overlay-btn { padding: 15px; margin: 5px; width: 85%; max-width: 250px; background: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; font-size: 18px; }
         #retry-btn { display: none; background: #ffeb3b; color: #000; border: 3px solid #fbc02d; border-radius: 8px; padding: 8px 16px; font-size: 19px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 235, 59, 0.4); margin-top: 5px; }
-        #notice-box { background: #f5f0e1; color: #2e2b26; padding: 25px; border-radius: 10px; width: 80%; max-width: 300px; border: 5px solid #a63737; }
+        #notice-box { background: #f5f0e1; color: #2e2b26; padding: 25px; border-radius: 10px; width: 85%; max-width: 350px; border: 5px solid #a63737; max-height: 80vh; overflow-y: auto; text-align: left; }
     </style>
 </head>
 <body>
     <div id="login-screen">
-        <h1 style="color: #e6b322; font-size: 45px; font-family: 'Gungsuh';">조선시대<br>러브레터</h1>
+        <h1 style="color: #e6b322; font-size: 45px; font-family: 'Gungsuh'; margin-bottom: 5px;">중전탈출</h1>
+        <div style="font-size: 22.5px; color: #888; margin-bottom: 30px;">(원작.러브레터)</div>
         <input type="text" id="nickname" placeholder="이름을 입력하시오" />
         <button class="btn-custom" onclick="joinGame()">입장하기</button>
+        <button class="btn-custom btn-sub" onclick="showRule()">게임 방법</button>
     </div>
 
     <div id="game-screen">
@@ -77,7 +80,12 @@
     </div>
 
     <div id="notice-overlay" class="overlay">
-        <div id="notice-box"><div id="notice-msg"></div><br><button class="btn-custom" onclick="closeNotice()">확인</button></div>
+        <div id="notice-box">
+            <div id="notice-msg"></div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn-custom" style="font-size: 16px; padding: 10px 30px;" onclick="closeNotice()">확인</button>
+            </div>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -85,7 +93,6 @@
         const socket = io();
         let myName = "", myHand = [], isMyTurn = false, isEliminated = false, selectedCard = "", players = [], selectedTarget = "";
         
-        // 업데이트된 카드 정보 데이터
         const cardInfo = {
             "1": { emoji: "👮‍♂️", name: "포졸", desc: "상대 1명을 지목하고 카드 종류를 맞힙니다. 맞히면 탈락(1 제외)" },
             "2": { emoji: "🔮", name: "무당", desc: "상대 1명의 패를 확인합니다." },
@@ -97,8 +104,42 @@
             "8": { emoji: "👸", name: "중전", desc: "이 카드를 버리면 즉시 탈락합니다." }
         };
 
-        function showNotice(msg) { document.getElementById('notice-msg').innerText = msg; document.getElementById('notice-overlay').style.display = 'flex'; }
+        function showNotice(msg, isRichText = false) { 
+            const msgEl = document.getElementById('notice-msg');
+            if(isRichText) msgEl.innerHTML = msg;
+            else msgEl.innerText = msg;
+            document.getElementById('notice-overlay').style.display = 'flex'; 
+        }
         function closeNotice() { document.getElementById('notice-overlay').style.display = 'none'; }
+        
+        function showRule() {
+            const ruleText = `
+                <h3 style="color:#a63737; border-bottom:2px solid #a63737; padding-bottom:5px;">🏰 게임 스토리</h3>
+                <p style="font-size:13px; line-height:1.6;">중전이 모함을 받아 억울하게 감옥에 갇혔습니다. 당신은 비밀 구출 세력의 일원이 되어 궁중 인물들의 도움을 받아 중전에 가장 먼저 도달해야 합니다.</p>
+                
+                <h3 style="color:#a63737; border-bottom:2px solid #a63737; padding-bottom:5px; margin-top:20px;">📜 게임 카드 기능</h3>
+                <ul style="font-size:13px; padding-left:20px; line-height:1.8;">
+                    <li><b>1 포졸 👮‍♂️:</b> 상대 패 맞추기 (성공 시 상대 탈락)</li>
+                    <li><b>2 무당 🔮:</b> 상대 패 몰래 확인</li>
+                    <li><b>3 검객 ⚔️:</b> 패 비교 (낮은 숫자 탈락)</li>
+                    <li><b>4 의녀 🩺:</b> 다음 턴까지 효과 무시 (보호)</li>
+                    <li><b>5 세자 🤴:</b> 패 버리고 새로 뽑기 (중전 버리면 탈락)</li>
+                    <li><b>6 임금 👑:</b> 상대와 패 교환</li>
+                    <li><b>7 후궁 🌸:</b> 세자/임금과 함께 있으면 강제 버림</li>
+                    <li><b>8 중전 👸:</b> 버리면 즉시 탈락</li>
+                </ul>
+
+                <h3 style="color:#a63737; border-bottom:2px solid #a63737; padding-bottom:5px; margin-top:20px;">🎮 게임 진행</h3>
+                <p style="font-size:13px; line-height:1.6;">
+                    1. 카드 1장을 뽑습니다. (손에 2장)<br>
+                    2. 1장을 선택해 사용하고 효과를 적용합니다.<br>
+                    3. 덱이 소진되거나 한 명만 남으면 종료됩니다.<br>
+                    4. 마지막에 가장 높은 숫자를 가진 사람이 승리!
+                </p>
+            `;
+            showNotice(ruleText, true);
+        }
+
         function joinGame() {
             myName = document.getElementById('nickname').value;
             if(!myName) return showNotice("이름을 입력하시오!");
@@ -184,14 +225,12 @@
         function clickCard(idx) {
             if(!isMyTurn || !myHand[idx]) return;
             selectedCard = myHand[idx];
-            // 후궁 제약: 세자(5) 또는 임금(6) 체크
             if((selectedCard.includes("세자") || selectedCard.includes("임금")) && myHand.some(c => c.includes("후궁"))) return showNotice("후궁을 먼저 버려야 하오!");
             const targets = ["포졸", "무당", "검객", "세자", "임금"];
             if(targets.some(t => selectedCard.includes(t))) {
                 const container = document.getElementById('target-buttons');
                 container.innerHTML = "";
                 players.forEach(p => {
-                    // 세자(5)는 자신도 지목 가능하므로 조건 분기
                     const isSeja = selectedCard.includes("세자");
                     if(!p.isEliminated && (isSeja || p.name !== myName)) {
                         const btn = document.createElement('button'); btn.className = "overlay-btn"; btn.innerText = p.name;
