@@ -44,9 +44,12 @@ io.on('connection', (socket) => {
     if (!room || !room.isGameStarted || room.playerOrder[room.turnIndex] !== socket.id) return;
 
     const attacker = room.players[socket.id];
-    const cardName = data.card;
+    const cardName = data.card; // 사용한 카드 이름 (이모티콘 포함)
     const targetId = Object.keys(room.players).find(id => room.players[id].name === data.target);
     const targetPlayer = targetId ? room.players[targetId] : null;
+
+    // [보완] 카드를 내자마자 로그에 어떤 카드를 썼는지 먼저 표시
+    io.to(socket.roomName).emit('gameLog', `🃏 [${attacker.name}]님이 [${cardName}]을(를) 사용했습니다.`);
 
     const idx = attacker.hand.indexOf(cardName);
     if (idx > -1) attacker.hand.splice(idx, 1);
@@ -125,10 +128,7 @@ function startGame(roomName) {
     io.to(id).emit('updateHand', room.players[id].hand);
   });
   room.turnIndex = 0;
-  
-  // 게임 시작 알림 전송 (UI 초기화를 위해)
   io.to(roomName).emit('gameStartedNotice'); 
-  
   sendCardStats(roomName); 
   nextTurn(roomName, true);
   broadcastRoomInfo(roomName);
