@@ -8,16 +8,10 @@ const io = new Server(server);
 app.use(express.static(__dirname));
 app.get('/', (req, res) => { res.sendFile(__dirname + '/index.html'); });
 
-// 업데이트된 카드 구성
 const deckMaster = [
   "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)",
-  "🔮무당(2)", "🔮무당(2)", 
-  "⚔️검객(3)", "⚔️검객(3)", 
-  "🩺의녀(4)", "🩺의녀(4)", 
-  "🤴세자(5)", "🤴세자(5)", 
-  "👑임금(6)", 
-  "🌸후궁(7)", 
-  "👸중전(8)"
+  "🔮무당(2)", "🔮무당(2)", "⚔️검객(3)", "⚔️검객(3)", "🩺의녀(4)", 
+  "🩺의녀(4)", "🤴세자(5)", "🤴세자(5)", "👑임금(6)", "🌸후궁(7)", "👸중전(8)"
 ];
 
 const cardTotalCounts = { "1":5, "2":2, "3":2, "4":2, "5":2, "6":1, "7":1, "8":1 };
@@ -54,7 +48,6 @@ io.on('connection', (socket) => {
     const targetId = Object.keys(room.players).find(id => room.players[id].name === data.target);
     const targetPlayer = targetId ? room.players[targetId] : null;
 
-    // 카드 사용 로그 전송
     io.to(socket.roomName).emit('gameLog', `🃏 [${attacker.name}]님이 [${cardName}]을(를) 사용했습니다.`);
 
     const idx = attacker.hand.indexOf(cardName);
@@ -63,7 +56,7 @@ io.on('connection', (socket) => {
     socket.emit('updateHand', attacker.hand);
 
     if (targetPlayer && targetPlayer.isProtected && targetId !== socket.id) {
-      io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 의녀의 치료 중이라 효과 무효!`);
+      io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 치료 중이라 효과 무효!`);
     } else {
       if (cardName.includes("포졸") && targetPlayer) {
         if (targetPlayer.hand[0].includes(data.guess)) {
