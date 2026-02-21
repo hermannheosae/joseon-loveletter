@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>중전탈출</title>
+    <title>중전구출</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { text-align: center; font-family: 'Noto Sans KR', sans-serif; background-color: #2e2b26; color: #f0e6d2; margin: 0; padding: 0; overflow: hidden; }
         #login-screen { display: flex; flex-direction: column; justify-content: center; height: 100vh; align-items: center; }
         input { padding: 15px; font-size: 20px; border-radius: 5px; border: 2px solid #8c7b6c; background-color: #4a4036; color: white; text-align: center; margin-bottom: 20px; width: 80%; max-width: 300px; }
-        .btn-custom { padding: 15px 30px; font-size: 22px; background-color: #a63737; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
-        .btn-sub { background-color: #5c5042; font-size: 16px; padding: 10px 20px; margin-top: 15px; }
+        .btn-custom { padding: 15px 30px; font-size: 22px; background-color: #a63737; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.4); width: 80%; max-width: 300px; margin-bottom: 10px; box-sizing: border-box; }
+        .btn-sub { background-color: #5c5042; }
         #game-screen { display: none; max-width: 600px; margin: 0 auto; padding: 10px; height: 100vh; flex-direction: column; box-sizing: border-box; }
         #top-bar { display: flex; flex-direction: column; background: rgba(0,0,0,0.4); border-radius: 10px; margin-bottom: 5px; padding: 10px; border: 1px solid #5c5042; }
         #game-log { background: rgba(0,0,0,0.3); height: 18vh; overflow-y: auto; padding: 10px; border-radius: 10px; font-size: 14px; margin-bottom: 5px; text-align: left; border: 1px solid #5c5042; }
@@ -24,17 +24,17 @@
         .mini-card.sold-out { background: #1a1a1a; color: #555; opacity: 0.6; }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         .overlay-btn { padding: 15px; margin: 5px; width: 85%; max-width: 250px; background: #4a4036; color: white; border: 1px solid #8c7b6c; border-radius: 5px; font-size: 18px; }
-        #retry-btn { display: none; background: #ffeb3b; color: #000; border: 3px solid #fbc02d; border-radius: 8px; padding: 8px 16px; font-size: 19px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 235, 59, 0.4); margin-top: 5px; }
+        #retry-btn { display: none; background: #ffeb3b; color: #000; border: 3px solid #fbc02d; border-radius: 8px; padding: 8px 16px; font-size: 19px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 235, 59, 0.4); margin-top: 5px; width: auto; max-width: none; }
         #notice-box { background: #f5f0e1; color: #2e2b26; padding: 25px; border-radius: 10px; width: 85%; max-width: 350px; border: 5px solid #a63737; max-height: 80vh; overflow-y: auto; text-align: left; }
     </style>
 </head>
 <body>
     <div id="login-screen">
-        <h1 style="color: #e6b322; font-size: 45px; font-family: 'Gungsuh'; margin-bottom: 5px;">중전탈출</h1>
+        <h1 style="color: #e6b322; font-size: 45px; font-family: 'Gungsuh'; margin-bottom: 5px;">중전구출</h1>
         <div style="font-size: 22.5px; color: #888; margin-bottom: 30px;">(원작.러브레터)</div>
         <input type="text" id="nickname" placeholder="이름을 입력하시오" />
         <button class="btn-custom" onclick="joinGame()">입장하기</button>
-        <button class="btn-custom btn-sub" onclick="showRule()">게임 방법</button>
+        <button class="btn-custom btn-sub" onclick="showRule()">게임방법</button>
     </div>
 
     <div id="game-screen">
@@ -42,7 +42,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-size: 14px;">인원: <span id="player-count">0</span>/4</span>
                 <div>
-                    <button id="start-btn" class="btn-custom" onclick="requestStart()" style="display:none; padding:8px 15px; font-size:16px;">▶ 시작하기</button>
+                    <button id="start-btn" class="btn-custom" onclick="requestStart()" style="display:none; padding:8px 15px; font-size:16px; width: auto;">▶ 시작하기</button>
                     <button id="retry-btn" onclick="requestStart()">한 판 더!</button>
                 </div>
             </div>
@@ -83,7 +83,7 @@
         <div id="notice-box">
             <div id="notice-msg"></div>
             <div style="text-align: center; margin-top: 20px;">
-                <button class="btn-custom" style="font-size: 16px; padding: 10px 30px;" onclick="closeNotice()">확인</button>
+                <button class="btn-custom" style="font-size: 16px; padding: 10px 30px; width: auto;" onclick="closeNotice()">확인</button>
             </div>
         </div>
     </div>
