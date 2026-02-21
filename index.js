@@ -68,7 +68,6 @@ io.on('connection', (socket) => {
       } else if (cardName.includes("검객") && targetPlayer) {
         const myVal = parseInt(attacker.hand[0].match(/\d+/)[0]);
         const taVal = parseInt(targetPlayer.hand[0].match(/\d+/)[0]);
-        // 숫자는 비공개로 대결 결과만 출력
         if (myVal > taVal) { 
           io.to(socket.roomName).emit('gameLog', `⚔️ 대결 결과: [${targetPlayer.name}] 탈락!`);
           eliminatePlayer(socket.roomName, targetId); 
@@ -126,10 +125,7 @@ function startGame(roomName) {
   room.deck = [...deckMaster].sort(() => Math.random() - 0.5);
   room.deck.pop();
   room.discardedCards = [];
-  
-  // 시작 플레이어 랜덤 결정을 위해 순서 섞기
   room.playerOrder = room.playerOrder.sort(() => Math.random() - 0.5);
-  
   room.playerOrder.forEach(id => {
     room.players[id].hand = [drawCard(room)];
     room.players[id].isEliminated = false;
@@ -162,16 +158,20 @@ function nextTurn(roomName, isFirst = false) {
 function determineWinnerByScore(roomName) {
   const room = rooms[roomName];
   let survivors = room.playerOrder.filter(id => !room.players[id].isEliminated)
-    .map(id => ({ id, name: room.players[id].name, score: room.players[id].hand[0] ? parseInt(room.players[id].hand[0].match(/\d+/)[0]) : 0 }));
+    .map(id => ({ 
+        id, 
+        name: room.players[id].name, 
+        score: room.players[id].hand[0] ? parseInt(room.players[id].hand[0].match(/\d+/)[0]) : 0,
+        card: room.players[id].hand[0] || "알수없음"
+    }));
   survivors.sort((a, b) => b.score - a.score);
   
   io.to(roomName).emit('gameLog', `🎴 덱 소진! 최종 패를 공개합니다.`);
-  survivors.forEach(p => { 
-    io.to(roomName).emit('gameLog', `📜 [${p.name}]: ${p.score}점`); 
-  });
+  survivors.forEach(p => { io.to(roomName).emit('gameLog', `📜 [${p.name}]: ${p.card}`); });
   
   const winner = survivors[0];
-  io.to(roomName).emit('gameLog', `✨ ${winner.score}점으로 [${winner.name}]님이 최종 승리하였습니다!`);
+  const cardOnlyName = winner.card.replace(/\(\d+\)/, ""); 
+  io.to(roomName).emit('gameLog', `✨ 마지막 생존자 [${winner.name}]님이 ${winner.score}번 [${cardOnlyName}]카드로 최종 승리하였습니다!`);
   endGame(roomName, winner.id);
 }
 
@@ -180,9 +180,10 @@ function checkWinCondition(roomName) {
   if (survivors.length === 1) {
     const winnerId = survivors[0];
     const winner = rooms[roomName].players[winnerId];
-    const score = winner.hand[0] ? parseInt(winner.hand[0].match(/\d+/)[0]) : "확인불가";
-    // 마지막 생존 시에만 어떻게 이겼는지 요약 표시
-    io.to(roomName).emit('gameLog', `✨ 마지막 생존자 [${winner.name}]님이 ${score}점으로 승리하였습니다!`);
+    const fullCardName = winner.hand[0] || "알수없음";
+    const score = fullCardName.match(/\d+/) ? fullCardName.match(/\d+/)[0] : "?";
+    const cardOnlyName = fullCardName.replace(/\(\d+\)/, "");
+    io.to(roomName).emit('gameLog', `✨ 마지막 생존자 [${winner.name}]님이 ${score}번 [${cardOnlyName}]카드로 최종 승리하였습니다!`);
     endGame(roomName, winnerId);
     return true; 
   }
