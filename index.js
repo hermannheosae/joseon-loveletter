@@ -8,10 +8,16 @@ const io = new Server(server);
 app.use(express.static(__dirname));
 app.get('/', (req, res) => { res.sendFile(__dirname + '/index.html'); });
 
+// 업데이트된 카드 구성
 const deckMaster = [
   "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)", "👮‍♂️포졸(1)",
-  "🎭광대(2)", "🎭광대(2)", "⚔️검객(3)", "⚔️검객(3)", "💊의녀(4)", 
-  "💊의녀(4)", "🗡️자객(5)", "🗡️자객(5)", "👑임금(6)", "🌺후궁(7)", "👸왕비(8)"
+  "🔮무당(2)", "🔮무당(2)", 
+  "⚔️검객(3)", "⚔️검객(3)", 
+  "🩺의녀(4)", "🩺의녀(4)", 
+  "🤴세자(5)", "🤴세자(5)", 
+  "👑임금(6)", 
+  "🌸후궁(7)", 
+  "👸중전(8)"
 ];
 
 const cardTotalCounts = { "1":5, "2":2, "3":2, "4":2, "5":2, "6":1, "7":1, "8":1 };
@@ -44,11 +50,11 @@ io.on('connection', (socket) => {
     if (!room || !room.isGameStarted || room.playerOrder[room.turnIndex] !== socket.id) return;
 
     const attacker = room.players[socket.id];
-    const cardName = data.card; // 사용한 카드 이름 (이모티콘 포함)
+    const cardName = data.card;
     const targetId = Object.keys(room.players).find(id => room.players[id].name === data.target);
     const targetPlayer = targetId ? room.players[targetId] : null;
 
-    // [보완] 카드를 내자마자 로그에 어떤 카드를 썼는지 먼저 표시
+    // 카드 사용 로그 전송
     io.to(socket.roomName).emit('gameLog', `🃏 [${attacker.name}]님이 [${cardName}]을(를) 사용했습니다.`);
 
     const idx = attacker.hand.indexOf(cardName);
@@ -57,15 +63,15 @@ io.on('connection', (socket) => {
     socket.emit('updateHand', attacker.hand);
 
     if (targetPlayer && targetPlayer.isProtected && targetId !== socket.id) {
-      io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 보호 중이라 효과 무효!`);
+      io.to(socket.roomName).emit('gameLog', `🛡️ [${targetPlayer.name}]님은 의녀의 치료 중이라 효과 무효!`);
     } else {
       if (cardName.includes("포졸") && targetPlayer) {
         if (targetPlayer.hand[0].includes(data.guess)) {
           io.to(socket.roomName).emit('gameLog', `🎉 체포 성공! [${targetPlayer.name}] 탈락!`);
           eliminatePlayer(socket.roomName, targetId);
         } else { io.to(socket.roomName).emit('gameLog', `💨 [${attacker.name}]의 체포 실패!`); }
-      } else if (cardName.includes("광대") && targetPlayer) {
-        socket.emit('privateNotice', `🎭 [${targetPlayer.name}]의 패는 [${targetPlayer.hand[0]}]입니다.`);
+      } else if (cardName.includes("무당") && targetPlayer) {
+        socket.emit('privateNotice', `🔮 [${targetPlayer.name}]의 패는 [${targetPlayer.hand[0]}]입니다.`);
       } else if (cardName.includes("검객") && targetPlayer) {
         const myVal = parseInt(attacker.hand[0].match(/\d+/)[0]);
         const taVal = parseInt(targetPlayer.hand[0].match(/\d+/)[0]);
@@ -74,12 +80,12 @@ io.on('connection', (socket) => {
         else { io.to(socket.roomName).emit('gameLog', `⚔️ 무승부!`); }
       } else if (cardName.includes("의녀")) {
         attacker.isProtected = true;
-        io.to(socket.roomName).emit('gameLog', `💊 [${attacker.name}]님이 보호받습니다.`);
-      } else if (cardName.includes("자객") && targetPlayer) {
+        io.to(socket.roomName).emit('gameLog', `🩺 [${attacker.name}]님이 보호받습니다.`);
+      } else if (cardName.includes("세자") && targetPlayer) {
         const disc = targetPlayer.hand.pop();
         room.discardedCards.push(disc);
-        io.to(socket.roomName).emit('gameLog', `🗡️ [${targetPlayer.name}]님이 [${disc}]를 버렸습니다.`);
-        if (disc.includes("왕비")) {
+        io.to(socket.roomName).emit('gameLog', `🤴 [${targetPlayer.name}]님이 패 [${disc}]를 버렸습니다.`);
+        if (disc.includes("중전")) {
           eliminatePlayer(socket.roomName, targetId);
         } else {
           const next = drawCard(room);
@@ -92,7 +98,8 @@ io.on('connection', (socket) => {
         io.to(socket.id).emit('updateHand', attacker.hand);
         io.to(targetId).emit('updateHand', targetPlayer.hand);
         io.to(socket.roomName).emit('gameLog', `👑 패 교환 완료!`);
-      } else if (cardName.includes("왕비")) {
+      } else if (cardName.includes("중전")) {
+        io.to(socket.roomName).emit('gameLog', `👸 [${attacker.name}]님이 중전을 잃어 탈락했습니다!`);
         eliminatePlayer(socket.roomName, socket.id);
       }
     }
@@ -192,11 +199,9 @@ function sendCardStats(roomName) {
     let val = card.match(/\d+/)[0]; 
     currentCounts[val] = (currentCounts[val] || 0) + 1; 
   });
-
   let stats = [];
-  const cardNames = { "1":"포졸", "2":"광대", "3":"검객", "4":"의녀", "5":"자객", "6":"임금", "7":"후궁", "8":"왕비" };
-  const emojies = { "1":"👮‍♂️", "2":"🎭", "3":"⚔️", "4":"💊", "5":"🗡️", "6":"👑", "7":"🌺", "8":"👸" };
-
+  const cardNames = { "1":"포졸", "2":"무당", "3":"검객", "4":"의녀", "5":"세자", "6":"임금", "7":"후궁", "8":"중전" };
+  const emojies = { "1":"👮‍♂️", "2":"🔮", "3":"⚔️", "4":"🩺", "5":"🤴", "6":"👑", "7":"🌸", "8":"👸" };
   for (let i = 1; i <= 8; i++) {
     let key = i.toString();
     let discarded = currentCounts[key] || 0;
